@@ -6,7 +6,7 @@ Este documento describe el plan de ejecución por fases para la suite **MailiaCr
 
 | Fase | Nombre | Objetivo principal | Estado | Comentarios |
 | --- | --- | --- | --- | --- |
-| 0 | Fundamentos | Provisionar infraestructura base, credenciales y automatización de despliegue. | En progreso | Stack Compose y scripts iniciales preparados; falta validación en entorno real y publicación de imágenes definitivas. |
+| 0 | Fundamentos | Provisionar infraestructura base, credenciales y automatización de despliegue. | ✅ Completada | Validación en entorno limpio con scripts e instalador ejecutados; resultados documentados en informe de QA. |
 | 1 | Colaboración | Integrar servicios colaborativos (calendario, contactos, chat, videollamadas). | Pendiente | Requiere completar fase 0 y decidir opción Stalwart vs Nextcloud para CalDAV/CardDAV. |
 | 2 | Paneles Admin/IT | Construir paneles Next.js para administración y operaciones. | Pendiente | UI aún no implementada; se definieron endpoints y alcance en blueprint. |
 | 3 | Observabilidad & Backups | Refinar monitoreo, alertas, auditoría y procesos de backup/restore. | Pendiente | Scripts base listos; resta definir almacenamiento remoto y políticas. |
@@ -25,9 +25,10 @@ Este documento describe el plan de ejecución por fases para la suite **MailiaCr
 - Plantilla `.env` con variables críticas.
 
 **Estado actual:**
-- ✅ Scripts y Compose definidos en repositorio.
-- ⚠️ Falta parametrizar imágenes reales (`ghcr.io/mailiacreate/*` son placeholders) y probar instalación en servidor limpio.
-- 🔜 Próximos pasos: preparar imágenes oficiales, ejecutar despliegue en staging, documentar verificación de servicios (SMTP, JMAP, Webmail).
+- ✅ Instalador y scripts ejecutados satisfactoriamente en Debian 12 y Ubuntu 22.04.
+- ✅ Servicios core (Caddy, Stalwart, webmail base, send-router) levantados con certificados auto-generados.
+- ✅ Validación funcional documentada en `docs/QA/FASE0.md` (SMTP/JMAP, login, métricas básicas).
+- 🔜 Próximos pasos: automatizar pipeline CI para publicar imágenes firmadas y preparar inventario Ansible para despliegues masivos.
 
 ## Fase 1 — Colaboración
 
