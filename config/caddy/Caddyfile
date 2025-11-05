@@ -1,0 +1,39 @@
+{
+  email admin@example.com
+  acme_ca https://acme-v02.api.letsencrypt.org/directory
+}
+
+mail.example.com {
+  encode gzip
+  tls {
+    on_demand
+  }
+
+  handle_path /jmap* {
+    reverse_proxy stalwart:8080
+  }
+
+  handle_path /admin* {
+    reverse_proxy admin-panel:3000
+  }
+
+  handle_path /it* {
+    reverse_proxy it-panel:3000
+  }
+
+  handle {
+    reverse_proxy webmail:3000
+  }
+}
+
+chat.example.com {
+  reverse_proxy element:80
+}
+
+sso.example.com {
+  reverse_proxy keycloak:8080
+}
+
+meet.example.com {
+  reverse_proxy jitsi-web:80
+}

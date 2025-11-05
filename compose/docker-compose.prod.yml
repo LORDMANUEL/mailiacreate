@@ -1,0 +1,163 @@
+version: "3.9"
+
+x-shared-env: &shared-env
+  TZ: "UTC"
+  LOG_LEVEL: "info"
+
+services:
+  caddy:
+    image: caddy:2.7-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ../config/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - stalwart
+      - webmail
+      - admin-panel
+      - it-panel
+      - keycloak
+      - element
+      - jitsi-web
+
+  stalwart:
+    image: stalwartlabs/mail-server:latest
+    restart: unless-stopped
+    environment:
+      <<: *shared-env
+    volumes:
+      - stalwart-data:/data
+      - ../config/stalwart/config.toml:/config/config.toml:ro
+    ports:
+      - "25:25"
+      - "465:465"
+      - "587:587"
+      - "993:993"
+
+  webmail:
+    image: ghcr.io/mailiacreate/webmail:latest
+    restart: unless-stopped
+    environment:
+      <<: *shared-env
+      JMAP_ENDPOINT: "https://mail.example.com/jmap"
+    depends_on:
+      - stalwart
+
+  admin-panel:
+    image: ghcr.io/mailiacreate/admin-panel:latest
+    restart: unless-stopped
+    environment:
+      <<: *shared-env
+      API_BASE_URL: "https://mail.example.com/admin/api"
+    depends_on:
+      - keycloak
+
+  it-panel:
+    image: ghcr.io/mailiacreate/it-panel:latest
+    restart: unless-stopped
+    environment:
+      <<: *shared-env
+      METRICS_BASE_URL: "http://grafana:3000"
+    depends_on:
+      - grafana
+
+  send-router:
+    build:
+      context: ../services/send-router
+    restart: unless-stopped
+    environment:
+      <<: *shared-env
+      PORT: 4000
+      SEND_ROUTER_STORAGE: "minio"
+    ports:
+      - "4000:4000"
+    depends_on:
+      - nats
+
+  nats:
+    image: nats:2.10-alpine
+    restart: unless-stopped
+    ports:
+      - "4222:4222"
+    command: ["-js"]
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0
+    restart: unless-stopped
+    environment:
+      <<: *shared-env
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: change_me
+      KC_PROXY: edge
+      KC_DB: dev-file
+    command: ["start-dev", "--http-enabled", "true", "--hostname", "sso.example.com"]
+    ports:
+      - "8080:8080"
+
+  grafana:
+    image: grafana/grafana:10.4.3
+    restart: unless-stopped
+    environment:
+      <<: *shared-env
+    ports:
+      - "3000:3000"
+
+  loki:
+    image: grafana/loki:3.1.1
+    restart: unless-stopped
+    command: ["-config.file=/etc/loki/local-config.yaml"]
+    ports:
+      - "3100:3100"
+    volumes:
+      - ../config/loki/local-config.yaml:/etc/loki/local-config.yaml:ro
+      - loki-data:/loki
+
+  promtail:
+    image: grafana/promtail:3.1.1
+    restart: unless-stopped
+    command: ["-config.file=/etc/promtail/config.yml"]
+    volumes:
+      - ../config/promtail/config.yml:/etc/promtail/config.yml:ro
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+
+  element:
+    image: vectorim/element-web:latest
+    restart: unless-stopped
+    environment:
+      <<: *shared-env
+      DOMAIN: chat.example.com
+    depends_on:
+      - synapse
+
+  synapse:
+    image: matrixdotorg/synapse:latest
+    restart: unless-stopped
+    environment:
+      <<: *shared-env
+      SYNAPSE_SERVER_NAME: chat.example.com
+      SYNAPSE_REPORT_STATS: "no"
+    volumes:
+      - synapse-data:/data
+
+  jitsi-web:
+    image: jitsi/web:stable-9230
+    restart: unless-stopped
+    environment:
+      <<: *shared-env
+      PUBLIC_URL: https://meet.example.com
+    ports:
+      - "4443:4443"
+      - "10000:10000/udp"
+
+volumes:
+  caddy-data:
+  caddy-config:
+  stalwart-data:
+  synapse-data:
+  loki-data:
+

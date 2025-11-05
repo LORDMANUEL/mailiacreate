@@ -1,0 +1,3 @@
+backups/
+compose/.env
+**/node_modules
