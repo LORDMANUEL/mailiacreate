@@ -58,3 +58,18 @@ path = "/data/blob"
 name = "default"
 backend = "rocksdb"
 path = "/data/lookup"
+
+# DKIM configuration
+# To generate a DKIM key, run the following command:
+# openssl genrsa -out dkim_private.key 2048
+# openssl rsa -in dkim_private.key -pubout -out dkim_public.key
+#
+# Then, add the public key to your DNS records as a TXT record.
+# The record name should be `default._domainkey.tudominio.com`.
+# The value should be `v=DKIM1; k=rsa; p=<your_public_key>`.
+#
+[[dkim]]
+name = "default"
+selector = "default"
+domain = "tudominio.com"
+private-key-path = "/data/dkim/private.key"
