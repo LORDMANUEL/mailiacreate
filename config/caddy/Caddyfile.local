@@ -27,6 +27,10 @@
     reverse_proxy it-panel:3000
   }
 
+  handle_path /scim* {
+    reverse_proxy scim-bridge:8089
+  }
+
   handle {
     reverse_proxy webmail:3000
   }

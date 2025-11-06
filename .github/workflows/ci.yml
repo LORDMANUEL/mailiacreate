@@ -4,6 +4,8 @@ on:
   push:
     branches: [ main ]
   pull_request:
+  schedule:
+    - cron: '0 2 * * *'
   workflow_dispatch:
 
 jobs:
@@ -18,11 +20,39 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm'
+          cache-dependency-path: |
+            services/admin-panel/package*.json
+            services/it-panel/package*.json
+
+      - name: Prime npm cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('services/admin-panel/package*.json', 'services/it-panel/package*.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
 
       - name: Install panel dependencies
         run: |
           npm install --prefix services/admin-panel --include=dev
           npm install --prefix services/it-panel --include=dev
+
+      - name: Build Next.js artifacts
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+        run: |
+          npm run --prefix services/admin-panel build
+          npm run --prefix services/it-panel build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: next-builds
+          path: |
+            services/admin-panel/.next
+            services/it-panel/.next
+          if-no-files-found: ignore
 
       - name: Type check panels
         run: |
@@ -35,6 +65,8 @@ jobs:
           node --check services/send-router/src/index.js
           node --check services/ai-orchestrator/src/index.js
           node --check services/restic-scheduler/src/index.js
+          node --check services/scim-bridge/src/index.js
+          node --check services/synthetic-exporter/src/index.js
 
       - name: Shell lint scripts
         run: |

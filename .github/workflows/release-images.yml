@@ -34,8 +34,15 @@ jobs:
           - name: restic-scheduler
             context: services/restic-scheduler
             dockerfile: services/restic-scheduler/Dockerfile
+          - name: scim-bridge
+            context: services/scim-bridge
+            dockerfile: services/scim-bridge/Dockerfile
+          - name: synthetic-exporter
+            context: .
+            dockerfile: services/synthetic-exporter/Dockerfile
     steps:
       - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
@@ -55,6 +62,7 @@ jobs:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
           push: true
+          platforms: linux/amd64,linux/arm64
           sbom: true
           provenance: true
           tags: |

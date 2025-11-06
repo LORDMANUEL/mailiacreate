@@ -44,6 +44,11 @@ scrape_configs:
     static_configs:
       - targets: ['restic-scheduler:8000']
 
+  - job_name: synthetic-exporter
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['synthetic-exporter:8090']
+
   - job_name: matrix-synapse
     metrics_path: /_synapse/metrics
     static_configs:

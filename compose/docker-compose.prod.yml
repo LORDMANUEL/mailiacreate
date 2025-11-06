@@ -338,6 +338,41 @@ services:
     volumes:
       - restic-data:/app/state
 
+  scim-bridge:
+    build:
+      context: ../services/scim-bridge
+    restart: unless-stopped
+    environment:
+      <<: *shared-env
+      SCIM_BRIDGE_PORT: 8089
+      KEYCLOAK_BASE_URL: http://keycloak:8080
+      KEYCLOAK_ADMIN_REALM: ${KEYCLOAK_REALM:-mailiacreate}
+      KEYCLOAK_CLIENT_ID: ${SCIM_CLIENT_ID:-mail-suite-scim}
+      KEYCLOAK_CLIENT_SECRET: ${SCIM_CLIENT_SECRET:-change_me}
+      STALWART_ADMIN_URL: http://stalwart:8080/admin
+      STALWART_ADMIN_USER: admin
+      STALWART_ADMIN_PASSWORD: change_me
+      SCIM_DEFAULT_QUOTA_MB: ${SCIM_DEFAULT_QUOTA_MB:-2048}
+    depends_on:
+      - keycloak
+      - stalwart
+    ports:
+      - "8089:8089"
+
+  synthetic-exporter:
+    build:
+      context: ..
+      dockerfile: services/synthetic-exporter/Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: *shared-env
+      SYNTHETIC_EXPORTER_PORT: 8090
+      SYNTHETIC_TARGET_HOST: ${SYNTHETIC_TARGET_HOST:-${MAIL_FQDN}}
+      SYNTHETIC_INTERVAL_SECONDS: ${SYNTHETIC_INTERVAL_SECONDS:-300}
+      SYNTHETIC_EXTRA_ARGS: ${SYNTHETIC_EXTRA_ARGS:-}
+    depends_on:
+      - caddy
+
 volumes:
   caddy-data:
   caddy-config:

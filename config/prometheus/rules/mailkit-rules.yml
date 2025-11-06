@@ -44,3 +44,12 @@ groups:
         annotations:
           summary: "Alto riesgo promedio en el pre-chequeo de IA"
           description: "El puntaje promedio del servicio de IA supera 0.7 en los últimos 10 minutos."
+
+      - alert: SyntheticChecksFailing
+        expr: synthetic_overall_status < 1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Chequeos sintéticos reportan fallos"
+          description: "El exporter sintético detecta errores sostenidos en los servicios externos."

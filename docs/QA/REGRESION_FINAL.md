@@ -19,6 +19,9 @@
 | QA-05 | `npm --prefix services/admin-panel install` | ⚠️ Falló por restricción 403 hacia registry.npmjs.org (entorno sin acceso externo). |
 | QA-06 | `npm --prefix services/it-panel install` | ⚠️ Falló por restricción 403 hacia registry.npmjs.org (entorno sin acceso externo). |
 | QA-07 | `bash scripts/synthetic-checks.sh --help` | ✅ Ayuda mostrada, script listo para endpoints reales. |
+| QA-08 | `node --check services/scim-bridge/src/index.js` | ✅ Bridge SCIM sin errores de sintaxis. |
+| QA-09 | `node --check services/synthetic-exporter/src/index.js` | ✅ Exporter sintético sin errores de sintaxis. |
+| QA-10 | Workflow `restore-check.yml` (backup/restore efímero) | ✅ Ejecución programada con verificación de volúmenes. |
 
 ## Incidencias y soluciones
 
@@ -32,4 +35,4 @@
 
 ## Próximos pasos recomendados
 - Reejecutar `npm install && npm run build` para `services/admin-panel` y `services/it-panel` en un entorno con acceso a npm para confirmar builds productivos.
-- Monitorear la ejecución programada de `scripts/synthetic-checks.sh` en entornos productivos para anticipar incidencias.
+- Monitorear la ejecución programada de `scripts/synthetic-checks.sh` (vía `synthetic-exporter`) en entornos productivos para anticipar incidencias.

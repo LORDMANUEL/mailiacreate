@@ -76,15 +76,23 @@ Si configuras `SEND_ROUTER_AI_URL`, cada mensaje pasa por `ai-orchestrator`; val
 
 ## Automatización CI/CD
 
-- `./scripts/hardening-check.sh --ci` y `./scripts/synthetic-checks.sh` se ejecutan en el workflow `.github/workflows/ci.yml`.
-- Las imágenes de `admin-panel`, `it-panel`, `send-router`, `ai-orchestrator` y `restic-scheduler` se construyen y firman desde `.github/workflows/release-images.yml` al publicar tags `v*.*.*` en GitHub.
+- `./scripts/hardening-check.sh --ci` y `./scripts/synthetic-checks.sh` se ejecutan en el workflow `.github/workflows/ci.yml` junto con `npm run build` para los paneles, reutilizando cachés de dependencias.
+- Las imágenes de `admin-panel`, `it-panel`, `send-router`, `ai-orchestrator`, `restic-scheduler`, `scim-bridge` y `synthetic-exporter` se construyen (multi-arquitectura) y firman desde `.github/workflows/release-images.yml` al publicar tags `v*.*.*` en GitHub.
+- El workflow `restore-check.yml` corre de manera programada para crear un backup, eliminar datos de prueba y validar la restauración de volúmenes críticos.
 - Para despliegues masivos, integra estos workflows con tu inventario Ansible o plataforma GitOps consumiendo las imágenes firmadas publicadas en GHCR.
 
 ## Sincronización de identidades
 
-- Usa Keycloak como autoridad central y habilita el conector SCIM: `Realm Settings > User Registration > SCIM`
+- Usa Keycloak como autoridad central y habilita el conector SCIM: `Realm Settings > User Registration > SCIM`.
+- Despliega el servicio `scim-bridge`, configurando `SCIM_CLIENT_ID/SECRET` (cliente confidencial en Keycloak) y las credenciales de Stalwart (`STALWART_ADMIN_USER/PASSWORD`). El bridge recibe `POST /scim/v2/Users` y refleja altas, bajas y actualizaciones.
 - Configura Stalwart con `ADMIN_API_TOKEN` y apunta el panel admin a `STALWART_ADMIN_API` para reflejar altas/bajas.
-- El flujo recomendado es: HRIS → Keycloak (SCIM) → Hook send-router → Stalwart (`POST /admin/users`).
+- El flujo recomendado es: HRIS → Keycloak (SCIM) → `scim-bridge` → Stalwart (`POST /users`) y paneles Next.js.
+
+## Monitorización sintética avanzada
+
+- El servicio `synthetic-exporter` ejecuta `scripts/synthetic-checks.sh --json` contra `SYNTHETIC_TARGET_HOST` y expone métricas Prometheus en `:8090/metrics`.
+- Ajusta `SYNTHETIC_EXTRA_ARGS="--skip-tls"` para despliegues con certificados auto-firmados o laboratorios IP-only.
+- Prometheus recopila la métrica `synthetic_overall_status`; la regla `SyntheticChecksFailing` enciende alertas críticas tras 5 minutos de fallos continuos.
 
 ## Hardening previo a producción
 

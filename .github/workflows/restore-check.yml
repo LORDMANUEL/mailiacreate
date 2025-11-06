@@ -1,0 +1,67 @@
+name: Backup and restore validation
+
+on:
+  schedule:
+    - cron: '30 3 * * *'
+  workflow_dispatch:
+
+jobs:
+  backup-restore:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare docker volumes
+        run: |
+          volumes=(
+            stalwart-data
+            synapse-data
+            caddy-data
+            caddy-config
+            nextcloud-data
+            nextcloud-db-data
+            prometheus-data
+            restic-data
+            send-router-redis-data
+            minio-data
+          )
+          for volume in "${volumes[@]}"; do
+            docker volume create "$volume" >/dev/null
+          done
+          docker run --rm -v stalwart-data:/data alpine sh -c "echo 'hello scim' > /data/test.txt"
+
+      - name: Run backup script
+        run: |
+          chmod +x scripts/backup.sh scripts/restore.sh
+          ./scripts/backup.sh ci-backup
+
+      - name: Remove sample data
+        run: |
+          docker run --rm -v stalwart-data:/data alpine sh -c "rm -f /data/test.txt"
+
+      - name: Restore backup
+        run: ./scripts/restore.sh ci-backup
+
+      - name: Verify restored content
+        run: |
+          docker run --rm -v stalwart-data:/data alpine cat /data/test.txt | grep 'hello scim'
+
+      - name: Cleanup backup artifacts
+        if: always()
+        run: |
+          rm -rf ci-backup
+          volumes=(
+            stalwart-data
+            synapse-data
+            caddy-data
+            caddy-config
+            nextcloud-data
+            nextcloud-db-data
+            prometheus-data
+            restic-data
+            send-router-redis-data
+            minio-data
+          )
+          for volume in "${volumes[@]}"; do
+            docker volume rm "$volume" >/dev/null || true
+          done
