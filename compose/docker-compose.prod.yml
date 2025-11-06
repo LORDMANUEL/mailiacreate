@@ -3,6 +3,7 @@ version: "3.9"
 x-shared-env: &shared-env
   TZ: "UTC"
   LOG_LEVEL: "info"
+  PUBLIC_SCHEME: "${PUBLIC_SCHEME:-https}"
 
 services:
   caddy:
@@ -54,7 +55,7 @@ services:
     restart: unless-stopped
     environment:
       <<: *shared-env
-      JMAP_ENDPOINT: "https://${MAIL_FQDN}/jmap"
+      JMAP_ENDPOINT: "${PUBLIC_SCHEME}://${MAIL_FQDN}/jmap"
     depends_on:
       - stalwart
 
@@ -64,8 +65,8 @@ services:
     restart: unless-stopped
     environment:
       <<: *shared-env
-      NEXTAUTH_URL: "https://${MAIL_FQDN}/admin"
-      KEYCLOAK_ISSUER: "https://${SSO_FQDN}/realms/${KEYCLOAK_REALM:-mailiacreate}"
+      NEXTAUTH_URL: "${PUBLIC_SCHEME}://${MAIL_FQDN}/admin"
+      KEYCLOAK_ISSUER: "${PUBLIC_SCHEME}://${SSO_FQDN}/realms/${KEYCLOAK_REALM:-mailiacreate}"
       KEYCLOAK_CLIENT_ID: "${KEYCLOAK_ADMIN_CLIENT_ID:-mail-suite-admin}"
       KEYCLOAK_CLIENT_SECRET: "${KEYCLOAK_ADMIN_CLIENT_SECRET:-change_me}"
       STALWART_ADMIN_URL: "http://stalwart:8080/admin"
@@ -81,8 +82,8 @@ services:
     restart: unless-stopped
     environment:
       <<: *shared-env
-      NEXTAUTH_URL: "https://${MAIL_FQDN}/it"
-      KEYCLOAK_ISSUER: "https://${SSO_FQDN}/realms/${KEYCLOAK_REALM:-mailiacreate}"
+      NEXTAUTH_URL: "${PUBLIC_SCHEME}://${MAIL_FQDN}/it"
+      KEYCLOAK_ISSUER: "${PUBLIC_SCHEME}://${SSO_FQDN}/realms/${KEYCLOAK_REALM:-mailiacreate}"
       KEYCLOAK_CLIENT_ID: "${KEYCLOAK_IT_CLIENT_ID:-mail-suite-it}"
       KEYCLOAK_CLIENT_SECRET: "${KEYCLOAK_IT_CLIENT_SECRET:-change_me}"
       PROMETHEUS_URL: "http://prometheus:9090"
@@ -172,7 +173,7 @@ services:
     restart: unless-stopped
     environment:
       <<: *shared-env
-      GF_SERVER_ROOT_URL: "https://${GRAFANA_FQDN}"
+      GF_SERVER_ROOT_URL: "${PUBLIC_SCHEME}://${GRAFANA_FQDN}"
     ports:
       - "3000:3000"
     volumes:
@@ -232,7 +233,7 @@ services:
     restart: unless-stopped
     environment:
       <<: *shared-env
-      PUBLIC_URL: https://${MEET_FQDN}
+      PUBLIC_URL: "${PUBLIC_SCHEME}://${MEET_FQDN}"
     ports:
       - "4443:4443"
       - "10000:10000/udp"
@@ -245,7 +246,7 @@ services:
       NEXTCLOUD_ADMIN_USER: ${NEXTCLOUD_ADMIN_USER:-admin}
       NEXTCLOUD_ADMIN_PASSWORD: ${NEXTCLOUD_ADMIN_PASSWORD:-change_me}
       NEXTCLOUD_TRUSTED_DOMAINS: "${CLOUD_FQDN}"
-      OVERWRITECLIURL: "https://${CLOUD_FQDN}"
+      OVERWRITECLIURL: "${PUBLIC_SCHEME}://${CLOUD_FQDN}"
       OVERWRITEPROTOCOL: https
       MYSQL_HOST: nextcloud-db
       MYSQL_DATABASE: nextcloud

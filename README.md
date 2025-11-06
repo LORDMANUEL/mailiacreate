@@ -71,41 +71,61 @@ Todos los servicios se entregan mediante contenedores Docker y comparten un arch
 
 ## Puesta en marcha rápida
 
-> Diseñado para que «clonar y ejecutar» sea suficiente en servidores Debian 12 o Ubuntu 22.04+ con privilegios `sudo`.
+- Diseñado para que «clonar y ejecutar» sea suficiente en servidores Debian 12 o Ubuntu 22.04+ con privilegios `sudo`.
 
-1. **Instalación automática (recomendada):**
-   ```bash
-   export MAILIACREATE_REPO=https://github.com/<tu-organizacion>/mailiacreate.git
-   curl -fsSL https://raw.githubusercontent.com/<tu-organizacion>/mailiacreate/main/scripts/install.sh | sudo bash
-   ```
-   - Solicita los dominios clave (correo, SSO, chat, videollamadas, Nextcloud, Grafana) y actualiza automáticamente `.env`, Stalwart y Synapse para alinearlos con tu organización.
-   - Valida el sistema, instala/recupera dependencias (Docker, Git, curl, gpg), corrige servicios detenidos y levanta el stack completo en `/opt/mailiacreate`.
-   - Incluye reintentos automáticos para `apt-get`, arranque asistido de Docker, verificación de espacio y reporte detallado de errores con sugerencias.
+### 1. Instalación automática (recomendada)
 
-   **¿Qué deja listo el instalador?**
+```bash
+git clone https://github.com/mailiacreate/mailiacreate.git
+cd mailiacreate
+sudo ./scripts/install.sh
+```
 
-   - Core de correo Stalwart configurado con tu dominio y certificados automáticos mediante Caddy.
-   - Webmail Next.js, paneles Admin/IT protegidos por Keycloak y send-router AI listos con URLs personalizadas.
-   - Suite colaborativa completa: Matrix/Element para chat, Jitsi para videollamadas, Nextcloud para archivos/vCards/CalDAV.
-   - Integración out-of-the-box de métricas, logs y backups, incluyendo credenciales y endpoints adaptados a tus FQDN.
+El instalador pregunta por tus dominios (o IP si eliges modo local), instala Docker + dependencias, prepara `compose/.env`, sincroniza configuraciones de Stalwart/Synapse y levanta todo el stack vía Docker Compose.
 
-2. **Despliegue manual:**
-   ```bash
-   git clone https://github.com/<tu-organizacion>/mailiacreate.git
-   cd mailiacreate
-   cp compose/.env.example compose/.env
-   sudo ./scripts/deploy.sh
-   ```
+**Modalidades disponibles**
 
-3. **Accesos iniciales:**
-   - Webmail: `https://mail.<dominio>/`
-   - Panel Admin: `https://mail.<dominio>/admin`
-   - Panel IT: `https://mail.<dominio>/it`
-   - Chat (Element): `https://chat.<dominio>`
-   - Nextcloud: `https://cloud.<dominio>`
-   - Grafana: `https://grafana.<dominio>`
+| Modo | Cuándo usarlo | Resultado |
+|------|----------------|-----------|
+| **Producción (dominios y TLS)** | Servidores con DNS público y certificados de Let's Encrypt | Caddy gestiona HTTPS automático en `https://mail.<dominio>`, `https://chat.<dominio>`, etc. |
+| **Local (solo IP/puerto)** | Pruebas en laboratorio o VM sin DNS | El instalador solicita la IP, ajusta URLs a `http://<ip>:puerto` y aplica un docker-compose override con Caddy en puertos 8080-8086. |
 
-> Ajusta dominios, credenciales y certificados en `compose/.env` antes de exponer el entorno en producción. El script `scripts/hardening-check.sh` valida credenciales, cabeceras y configuración de seguridad básica.
+**Servicios listos tras la instalación**
+
+- Core de correo Stalwart con tu dominio y protocolos Submission/IMAPS expuestos.
+- Webmail estilo Gmail, paneles Admin/IT con SSO, send-router con IA preventiva y automatización de backups Restic.
+- Suite colaborativa: Matrix/Element, Jitsi Meet, Nextcloud (archivos/vCards/CalDAV) y almacenamiento MinIO.
+- Observabilidad integrada: Prometheus, Grafana, Loki y alertas preconfiguradas.
+
+### 2. Despliegue manual
+
+```bash
+git clone https://github.com/mailiacreate/mailiacreate.git
+cd mailiacreate
+cp compose/.env.example compose/.env
+sudo ./scripts/deploy.sh
+```
+
+El script detecta si `compose/.env` tiene `LOCAL_MODE=true` para decidir si aplica el override `docker-compose.local.yml`.
+
+### 3. Accesos iniciales
+
+**Modo producción (dominios):**
+- Webmail & paneles: `https://mail.<dominio>/`
+- Chat (Element): `https://chat.<dominio>`
+- Nextcloud: `https://cloud.<dominio>`
+- Grafana: `https://grafana.<dominio>`
+
+**Modo local (solo IP):**
+- Webmail + paneles + JMAP: `http://<ip>:8080`
+- Keycloak SSO: `http://<ip>:8081`
+- Element (chat): `http://<ip>:8082`
+- Matrix Synapse (API): `http://<ip>:8083`
+- Jitsi: `http://<ip>:8084`
+- Nextcloud: `http://<ip>:8085`
+- Grafana: `http://<ip>:8086`
+
+> Ajusta credenciales en `compose/.env` antes de exponer en producción. Después del despliegue ejecuta `./scripts/hardening-check.sh` para validar seguridad básica.
 
 ---
 

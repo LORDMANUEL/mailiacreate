@@ -1,0 +1,57 @@
+{
+  auto_https off
+}
+
+(header-security) {
+  header {
+    X-Content-Type-Options "nosniff"
+    X-Frame-Options "SAMEORIGIN"
+    Referrer-Policy "strict-origin-when-cross-origin"
+    Permissions-Policy "camera=(), microphone=(), geolocation=()"
+  }
+}
+
+:8080 {
+  import header-security
+  encode gzip
+
+  handle_path /jmap* {
+    reverse_proxy stalwart:8080
+  }
+
+  handle_path /admin* {
+    reverse_proxy admin-panel:3000
+  }
+
+  handle_path /it* {
+    reverse_proxy it-panel:3000
+  }
+
+  handle {
+    reverse_proxy webmail:3000
+  }
+}
+
+:8081 {
+  reverse_proxy keycloak:8080
+}
+
+:8082 {
+  reverse_proxy element:80
+}
+
+:8083 {
+  reverse_proxy synapse:8008
+}
+
+:8084 {
+  reverse_proxy jitsi-web:80
+}
+
+:8085 {
+  reverse_proxy nextcloud:80
+}
+
+:8086 {
+  reverse_proxy grafana:3000
+}

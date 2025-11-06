@@ -39,6 +39,27 @@ prompt_with_default() {
   fi
 }
 
+prompt_yes_no() {
+  local message="$1"
+  local default_answer="${2:-n}"
+  local prompt="[y/N]"
+  if [[ "$default_answer" =~ ^([Yy]|yes|YES|true|TRUE)$ ]]; then
+    prompt="[Y/n]"
+    default_answer="y"
+  else
+    default_answer="n"
+  fi
+  local response=""
+  read -r -p "$message $prompt: " response || true
+  if [[ -z "$response" ]]; then
+    response="$default_answer"
+  fi
+  if [[ "$response" =~ ^([Yy]|yes|YES|true|TRUE)$ ]]; then
+    return 0
+  fi
+  return 1
+}
+
 set_env_var() {
   local file="$1"
   local key="$2"
@@ -58,6 +79,15 @@ update_file_pattern() {
   local pattern="$2"
   local replacement="$3"
   perl -0pi -e "s|$pattern|$replacement|gm" "$file"
+}
+
+strip_port() {
+  local value="$1"
+  if [[ "$value" == *:* ]]; then
+    echo "${value%%:*}"
+  else
+    echo "$value"
+  fi
 }
 
 if [[ $EUID -ne 0 ]]; then
@@ -142,7 +172,7 @@ git --version >/dev/null && success "Git operativo"
 USER_NAME=${SUDO_USER:-$(logname 2>/dev/null || echo root)}
 REPO_DIR=${MAILIACREATE_HOME:-/opt/mailiacreate}
 PROJECT_DIR="$REPO_DIR/project"
-REPO_URL=${MAILIACREATE_REPO:-https://github.com/<tu-organizacion>/mailiacreate.git}
+REPO_URL=${MAILIACREATE_REPO:-https://github.com/mailiacreate/mailiacreate.git}
 
 info "Preparando directorios en $REPO_DIR"
 mkdir -p "$REPO_DIR" "$REPO_DIR/data" "$REPO_DIR/logs"
@@ -168,16 +198,66 @@ fi
 ENV_FILE="compose/.env"
 source "$ENV_FILE"
 
+LOCAL_MODE_DEFAULT=${LOCAL_MODE:-false}
+if prompt_yes_no "¿Deseas ejecutar en modo local (IP sin dominios)?" "$LOCAL_MODE_DEFAULT"; then
+  LOCAL_MODE_VALUE=true
+  LOCAL_IP_SUGGESTED=$(hostname -I 2>/dev/null | awk '{print $1}' | tr -d '\n')
+  if [[ -z "$LOCAL_IP_SUGGESTED" ]]; then
+    LOCAL_IP_SUGGESTED="127.0.0.1"
+  fi
+  LOCAL_IP_VALUE=$(prompt_with_default "Dirección IP del servidor (para acceso local)" "${LOCAL_IP:-$LOCAL_IP_SUGGESTED}")
+  PUBLIC_SCHEME_VALUE="http"
+else
+  LOCAL_MODE_VALUE=false
+  LOCAL_IP_VALUE=""
+  PUBLIC_SCHEME_VALUE="https"
+fi
+
+set_env_var "$ENV_FILE" "LOCAL_MODE" "$LOCAL_MODE_VALUE"
+set_env_var "$ENV_FILE" "LOCAL_IP" "$LOCAL_IP_VALUE"
+set_env_var "$ENV_FILE" "PUBLIC_SCHEME" "$PUBLIC_SCHEME_VALUE"
+
+source "$ENV_FILE"
+
 info "Configurando dominios y contactos"
-MAIL_DOMAIN_VALUE=$(prompt_with_default "Dominio principal de correo" "${MAIL_DOMAIN:-example.com}")
-MAIL_FQDN_VALUE=$(prompt_with_default "FQDN para webmail" "${MAIL_FQDN:-mail.${MAIL_DOMAIN_VALUE}}")
-SSO_FQDN_VALUE=$(prompt_with_default "FQDN para SSO" "${SSO_FQDN:-sso.${MAIL_DOMAIN_VALUE}}")
-CHAT_FQDN_VALUE=$(prompt_with_default "FQDN para Element/Chat" "${CHAT_FQDN:-chat.${MAIL_DOMAIN_VALUE}}")
-MATRIX_FQDN_VALUE=$(prompt_with_default "FQDN para Matrix Synapse" "${MATRIX_FQDN:-matrix.${MAIL_DOMAIN_VALUE}}")
-MEET_FQDN_VALUE=$(prompt_with_default "FQDN para Jitsi" "${MEET_FQDN:-meet.${MAIL_DOMAIN_VALUE}}")
-CLOUD_FQDN_VALUE=$(prompt_with_default "FQDN para Nextcloud" "${CLOUD_FQDN:-cloud.${MAIL_DOMAIN_VALUE}}")
-GRAFANA_FQDN_VALUE=$(prompt_with_default "FQDN para Grafana" "${GRAFANA_FQDN:-grafana.${MAIL_DOMAIN_VALUE}}")
-ADMIN_EMAIL_VALUE=$(prompt_with_default "Correo de contacto para certificados" "${ADMIN_EMAIL:-admin@${MAIL_DOMAIN_VALUE}}")
+MAIL_DOMAIN_DEFAULT="${MAIL_DOMAIN:-example.com}"
+if [[ "$LOCAL_MODE" == "true" ]]; then
+  MAIL_DOMAIN_DEFAULT="${MAIL_DOMAIN:-mailiacreate.local}"
+fi
+MAIL_DOMAIN_VALUE=$(prompt_with_default "Dominio principal de correo" "$MAIL_DOMAIN_DEFAULT")
+
+if [[ "$LOCAL_MODE" == "true" ]]; then
+  MAIL_FQDN_DEFAULT="${MAIL_FQDN:-${LOCAL_IP:-127.0.0.1}:8080}"
+  SSO_FQDN_DEFAULT="${SSO_FQDN:-${LOCAL_IP:-127.0.0.1}:8081}"
+  CHAT_FQDN_DEFAULT="${CHAT_FQDN:-${LOCAL_IP:-127.0.0.1}:8082}"
+  MATRIX_FQDN_DEFAULT="${MATRIX_FQDN:-${LOCAL_IP:-127.0.0.1}:8083}"
+  MEET_FQDN_DEFAULT="${MEET_FQDN:-${LOCAL_IP:-127.0.0.1}:8084}"
+  CLOUD_FQDN_DEFAULT="${CLOUD_FQDN:-${LOCAL_IP:-127.0.0.1}:8085}"
+  GRAFANA_FQDN_DEFAULT="${GRAFANA_FQDN:-${LOCAL_IP:-127.0.0.1}:8086}"
+else
+  MAIL_FQDN_DEFAULT="${MAIL_FQDN:-mail.${MAIL_DOMAIN_VALUE}}"
+  SSO_FQDN_DEFAULT="${SSO_FQDN:-sso.${MAIL_DOMAIN_VALUE}}"
+  CHAT_FQDN_DEFAULT="${CHAT_FQDN:-chat.${MAIL_DOMAIN_VALUE}}"
+  MATRIX_FQDN_DEFAULT="${MATRIX_FQDN:-matrix.${MAIL_DOMAIN_VALUE}}"
+  MEET_FQDN_DEFAULT="${MEET_FQDN:-meet.${MAIL_DOMAIN_VALUE}}"
+  CLOUD_FQDN_DEFAULT="${CLOUD_FQDN:-cloud.${MAIL_DOMAIN_VALUE}}"
+  GRAFANA_FQDN_DEFAULT="${GRAFANA_FQDN:-grafana.${MAIL_DOMAIN_VALUE}}"
+fi
+
+MAIL_FQDN_VALUE=$(prompt_with_default "Host de webmail" "$MAIL_FQDN_DEFAULT")
+SSO_FQDN_VALUE=$(prompt_with_default "Host para SSO" "$SSO_FQDN_DEFAULT")
+CHAT_FQDN_VALUE=$(prompt_with_default "Host para Element/Chat" "$CHAT_FQDN_DEFAULT")
+MATRIX_FQDN_VALUE=$(prompt_with_default "Host para Matrix Synapse" "$MATRIX_FQDN_DEFAULT")
+MEET_FQDN_VALUE=$(prompt_with_default "Host para Jitsi" "$MEET_FQDN_DEFAULT")
+CLOUD_FQDN_VALUE=$(prompt_with_default "Host para Nextcloud" "$CLOUD_FQDN_DEFAULT")
+GRAFANA_FQDN_VALUE=$(prompt_with_default "Host para Grafana" "$GRAFANA_FQDN_DEFAULT")
+
+if [[ "$LOCAL_MODE" == "true" ]]; then
+  ADMIN_EMAIL_DEFAULT="${ADMIN_EMAIL:-admin@${MAIL_DOMAIN_VALUE}}"
+else
+  ADMIN_EMAIL_DEFAULT="${ADMIN_EMAIL:-admin@${MAIL_DOMAIN_VALUE}}"
+fi
+ADMIN_EMAIL_VALUE=$(prompt_with_default "Correo de contacto para certificados" "$ADMIN_EMAIL_DEFAULT")
 
 set_env_var "$ENV_FILE" "MAIL_DOMAIN" "$MAIL_DOMAIN_VALUE"
 set_env_var "$ENV_FILE" "MAIL_FQDN" "$MAIL_FQDN_VALUE"
@@ -191,13 +271,16 @@ set_env_var "$ENV_FILE" "ADMIN_EMAIL" "$ADMIN_EMAIL_VALUE"
 
 source "$ENV_FILE"
 
+MAIL_HOST_ONLY=$(strip_port "$MAIL_FQDN")
+MATRIX_HOST_ONLY=$(strip_port "$MATRIX_FQDN")
+
 info "Actualizando configuración de Stalwart y Matrix"
-update_file_pattern "config/stalwart/config.toml" 'hostname = "[^"]+"' "hostname = \"$MAIL_FQDN\""
+update_file_pattern "config/stalwart/config.toml" 'hostname = "[^"]+"' "hostname = \"$MAIL_HOST_ONLY\""
 update_file_pattern "config/stalwart/config.toml" 'domain = "[^"]+"' "domain = \"$MAIL_DOMAIN\""
-update_file_pattern "config/synapse/homeserver.yaml" '^server_name: .*$' "server_name: $MATRIX_FQDN"
-update_file_pattern "config/synapse/homeserver.yaml" '^public_baseurl: .*$' "public_baseurl: https://$CHAT_FQDN/"
-update_file_pattern "config/synapse/homeserver.yaml" '- https://[^ ]*' "- https://$CHAT_FQDN"
-update_file_pattern "config/synapse/homeserver.yaml" 'issuer: https://[^ ]*/realms/[^ ]*' "issuer: https://$SSO_FQDN/realms/$KEYCLOAK_REALM"
+update_file_pattern "config/synapse/homeserver.yaml" '^server_name: .*$' "server_name: $MATRIX_HOST_ONLY"
+update_file_pattern "config/synapse/homeserver.yaml" '^public_baseurl: .*$' "public_baseurl: ${PUBLIC_SCHEME}://$CHAT_FQDN/"
+update_file_pattern "config/synapse/homeserver.yaml" '    - https?://[^ ]*' "    - ${PUBLIC_SCHEME}://$CHAT_FQDN"
+update_file_pattern "config/synapse/homeserver.yaml" 'issuer: https?://[^ ]*/realms/[^ ]*' "issuer: ${PUBLIC_SCHEME}://$SSO_FQDN/realms/$KEYCLOAK_REALM"
 if [[ -n "${MATRIX_REGISTRATION_SHARED_SECRET:-}" ]]; then
   update_file_pattern "config/synapse/homeserver.yaml" 'registration_shared_secret: "[^"]+"' "registration_shared_secret: \"$MATRIX_REGISTRATION_SHARED_SECRET\""
 fi
@@ -208,18 +291,28 @@ if (( AVAILABLE < 5120 )); then
   warn "Espacio disponible reducido (${AVAILABLE} MB). Considere ampliar antes de producción."
 fi
 
+COMPOSE_ARGS=("-f" "compose/docker-compose.prod.yml")
+if [[ "$LOCAL_MODE" == "true" ]]; then
+  COMPOSE_ARGS+=("-f" "compose/docker-compose.local.yml")
+fi
+
 info "Descargando imágenes de contenedores"
-if ! docker compose -f compose/docker-compose.prod.yml pull; then
+if ! docker compose "${COMPOSE_ARGS[@]}" pull; then
   warn "No se pudieron pre-descargar todas las imágenes. Continuando con el despliegue; Docker las obtendrá al iniciar."
 fi
 
 chown -R "$USER_NAME:$USER_NAME" "$PROJECT_DIR"
 
 info "Levantando la plataforma"
-docker compose -f compose/docker-compose.prod.yml up -d
+docker compose "${COMPOSE_ARGS[@]}" up -d
 
 info "Verificando estado de los servicios"
-docker compose -f compose/docker-compose.prod.yml ps
+docker compose "${COMPOSE_ARGS[@]}" ps
 
-success "Instalación completada. Accede vía https://mail.<tu-dominio>/"
+if [[ "$LOCAL_MODE" == "true" ]]; then
+  success "Instalación completada en modo local. Accede vía http://${MAIL_FQDN}/"
+  info "Servicios clave: Webmail ${MAIL_FQDN}, SSO ${SSO_FQDN}, Chat ${CHAT_FQDN}, Nextcloud ${CLOUD_FQDN}, Grafana ${GRAFANA_FQDN}."
+else
+  success "Instalación completada. Accede vía https://${MAIL_FQDN}/"
+fi
 info "Ejecuta ./scripts/hardening-check.sh tras personalizar compose/.env para validar seguridad."
