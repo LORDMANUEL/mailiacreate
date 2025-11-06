@@ -14,6 +14,10 @@ it.tudominio.com {
     reverse_proxy it-panel:3000
 }
 
+api.tudominio.com {
+    reverse_proxy mock-api:3001
+}
+
 chat.tudominio.com {
     reverse_proxy synapse:8008
 }

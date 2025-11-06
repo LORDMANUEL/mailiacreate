@@ -64,6 +64,14 @@ services:
     networks:
       - mailkit_net
 
+  mock-api:
+    build: ./src/mock-api
+    restart: unless-stopped
+    expose:
+      - 3001
+    networks:
+      - mailkit_net
+
   db:
     image: mariadb
     restart: unless-stopped
