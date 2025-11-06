@@ -7,7 +7,16 @@ if [[ $# -lt 1 ]]; then
 fi
 
 BACKUP_DIR="$1"
-volumes=(stalwart-data synapse-data caddy-data caddy-config)
+volumes=(
+  stalwart-data
+  synapse-data
+  caddy-data
+  caddy-config
+  nextcloud-data
+  nextcloud-db-data
+  prometheus-data
+  restic-data
+)
 for volume in "${volumes[@]}"; do
   archive="$BACKUP_DIR/${volume}.tgz"
   if [[ ! -f "$archive" ]]; then

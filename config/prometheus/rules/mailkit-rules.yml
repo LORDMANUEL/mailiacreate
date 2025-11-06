@@ -1,0 +1,28 @@
+groups:
+  - name: mail-suite-alerts
+    rules:
+      - alert: HighSMTPQueue
+        expr: stalwart_smtp_queue_length > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "SMTP queue creciendo"
+          description: "La cola SMTP superó los 100 mensajes durante 5 minutos."
+
+      - alert: BackupFailure
+        expr: max_over_time(restic_scheduler_last_success{status="failure"}[30m]) > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: "Fallo en tarea de backup"
+          description: "Restic reportó al menos un fallo en la última ejecución programada."
+
+      - alert: MatrixUnreachable
+        expr: up{job="matrix-synapse"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Synapse no responde"
+          description: "El job matrix-synapse dejó de exponer métricas en los últimos 2 minutos."

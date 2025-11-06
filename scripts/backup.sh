@@ -9,7 +9,16 @@ cat <<INFO
 [backup] Exporting docker volumes to $BACKUP_DIR
 INFO
 
-volumes=(stalwart-data synapse-data caddy-data caddy-config)
+volumes=(
+  stalwart-data
+  synapse-data
+  caddy-data
+  caddy-config
+  nextcloud-data
+  nextcloud-db-data
+  prometheus-data
+  restic-data
+)
 for volume in "${volumes[@]}"; do
   echo "[backup] Saving $volume"
   docker run --rm \

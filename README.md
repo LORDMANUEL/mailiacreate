@@ -26,16 +26,18 @@ Este repositorio alberga la planificación y los artefactos del proyecto “Mail
 3. **Servicios incluidos** (ver `compose/docker-compose.prod.yml`):
 
    - `caddy`: proxy TLS con certificados automáticos.
-   - `stalwart`: core de correo con JMAP/IMAP/SMTP.
-   - `webmail`, `admin-panel`, `it-panel`: frontends Next.js (imágenes externas).
-   - `keycloak`: SSO OIDC.
-   - `send-router`: microservicio Node.js multi-canal (`POST /api/send`).
-   - `nats`: cola ligera para orquestación.
-   - `matrix synapse` + `element`: chat.
-   - `jitsi-web`: videollamadas.
-   - `grafana`, `loki`, `promtail`: observabilidad.
-
-   > Las imágenes `ghcr.io/mailiacreate/*` son placeholders: sustituye por tus builds o ajusta el compose.
+   - `stalwart`: core de correo con JMAP/IMAP/SMTP y métricas Prometheus.
+   - `webmail`: cliente JMAP.
+   - `admin-panel`: Next.js + Keycloak con gestión de dominios/usuarios/exportaciones (este repositorio builda la imagen).
+   - `it-panel`: Next.js + Grafana/Prometheus/Loki para monitoreo en tiempo real (imagen construida localmente).
+   - `keycloak`: SSO OIDC central para webmail, panel admin e IT, Matrix y Nextcloud.
+   - `send-router`: microservicio Node.js multi-canal (`POST /api/send`) + receptor de alertas.
+   - `nats`: cola ligera para orquestación de jobs futuros.
+   - `synapse` + `element`: chat Matrix integrado vía OIDC.
+   - `jitsi-web`: videollamadas con soporte TURN.
+   - `nextcloud`, `nextcloud-db`, `redis`: colaboración (archivos, CardDAV/CalDAV) sincronizada con el ecosistema.
+   - `prometheus`, `alertmanager`, `grafana`, `loki`, `promtail`, `cadvisor`, `node-exporter`: observabilidad, dashboards y alertas listas.
+   - `restic-scheduler`: orquestador de backups programados con métricas y API para lanzamientos manuales.
 
 4. **Backups y restore**:
 
@@ -53,6 +55,17 @@ Este repositorio alberga la planificación y los artefactos del proyecto “Mail
      -F to=https://webhook.site/xxxx \
      -F text="Hola mundo"
    ```
+
+   El endpoint `/api/hooks/alerts` recibe webhooks de Alertmanager para correlacionar incidencias con otros canales.
+
+6. **Accesos clave tras el despliegue**:
+
+   - Webmail: `https://mail.<dominio>/`
+   - Panel Admin: `https://mail.<dominio>/admin`
+   - Panel IT: `https://mail.<dominio>/it`
+   - Chat (Element): `https://chat.<dominio>` — Homeserver Matrix disponible en `https://matrix.<dominio>`
+   - Nextcloud: `https://cloud.<dominio>`
+   - Grafana: `https://grafana.<dominio>`
 
 > ⚠️ Ajusta dominios, credenciales y certificados en `compose/.env` antes de producción.
 > Puedes sobrescribir `MAILIACREATE_REPO` y `MAILIACREATE_HOME` antes de ejecutar el instalador para personalizar la ubicación del proyecto.

@@ -69,6 +69,23 @@ app.post('/api/send', upload.any(), async (req, res) => {
   }
 });
 
+app.post('/api/hooks/alerts', async (req, res) => {
+  try {
+    const alerts = req.body?.alerts || [];
+    alerts.forEach((alert) => {
+      console.log(`[send-router] alertmanager event`, {
+        status: alert.status,
+        name: alert.labels?.alertname,
+        description: alert.annotations?.description
+      });
+    });
+    res.json({ received: alerts.length });
+  } catch (error) {
+    console.error('[send-router] failed to record alert', error.message);
+    res.status(500).json({ error: 'Failed to record alert' });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`[send-router] listening on port ${PORT}`);
 });

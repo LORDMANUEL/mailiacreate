@@ -7,9 +7,9 @@ Este documento describe el plan de ejecución por fases para la suite **MailiaCr
 | Fase | Nombre | Objetivo principal | Estado | Comentarios |
 | --- | --- | --- | --- | --- |
 | 0 | Fundamentos | Provisionar infraestructura base, credenciales y automatización de despliegue. | ✅ Completada | Validación en entorno limpio con scripts e instalador ejecutados; resultados documentados en informe de QA. |
-| 1 | Colaboración | Integrar servicios colaborativos (calendario, contactos, chat, videollamadas). | Pendiente | Requiere completar fase 0 y decidir opción Stalwart vs Nextcloud para CalDAV/CardDAV. |
-| 2 | Paneles Admin/IT | Construir paneles Next.js para administración y operaciones. | Pendiente | UI aún no implementada; se definieron endpoints y alcance en blueprint. |
-| 3 | Observabilidad & Backups | Refinar monitoreo, alertas, auditoría y procesos de backup/restore. | Pendiente | Scripts base listos; resta definir almacenamiento remoto y políticas. |
+| 1 | Colaboración | Integrar servicios colaborativos (calendario, contactos, chat, videollamadas). | ✅ Completada | Nextcloud + Redis/MariaDB operativos, Matrix/Element/Jitsi integrados con Keycloak. |
+| 2 | Paneles Admin/IT | Construir paneles Next.js para administración y operaciones. | ✅ Completada | Paneles Next.js con OIDC, CRUD dominios/usuarios, dashboards y exportaciones documentadas. |
+| 3 | Observabilidad & Backups | Refinar monitoreo, alertas, auditoría y procesos de backup/restore. | ✅ Completada | Prometheus/Alertmanager/Grafana provisionados, restic scheduler con métricas y políticas. |
 | 4 | Send-Router & Extensiones | Ampliar entrega multi-canal y capacidades opcionales (AI, automatizaciones). | Pendiente | Servicio esqueleto creado; falta robustecer colas, métricas y pruebas multi-canal. |
 
 ---
@@ -40,8 +40,10 @@ Este documento describe el plan de ejecución por fases para la suite **MailiaCr
 - Documentación de flujos de configuración y pruebas (room chat, reunión, sincronización de agenda/contactos).
 
 **Estado actual:**
-- ⚠️ Servicios referenciados en Compose como placeholders sin configuración específica.
-- 🔜 Próximos pasos: seleccionar proveedor CalDAV/CardDAV, definir variables de entorno para Matrix/Jitsi, automatizar aprovisionamiento de usuarios via Keycloak.
+- ✅ Nextcloud desplegado con base MariaDB y Redis, expuesto por Caddy (`cloud.<dominio>`), integrado con Keycloak mediante OIDC Social Login.
+- ✅ Matrix Synapse configurado con proveedor OIDC Keycloak y Element sirviendo `chat.<dominio>`.
+- ✅ Jitsi Web disponible en `meet.<dominio>` con plantillas de TURN.
+- 🔜 Próximos pasos: automatizar sincronización SCIM entre Keycloak y Stalwart para provisión completa.
 
 ## Fase 2 — Paneles Admin & IT
 
@@ -53,8 +55,10 @@ Este documento describe el plan de ejecución por fases para la suite **MailiaCr
 - APIs backend (JMAP/Admin) conectadas y protegidas por OIDC.
 
 **Estado actual:**
-- ⚠️ Solo se dispone del blueprint funcional; no hay código de frontend o backend para paneles.
-- 🔜 Próximos pasos: scaffolding de aplicaciones Next.js, definición de contratos API concretos, integración con Keycloak y Stalwart Admin API.
+- ✅ Aplicaciones Next.js (`services/admin-panel`, `services/it-panel`) generadas con Dockerfile y dependencias listas para `docker compose`.
+- ✅ Panel Admin consume Keycloak (NextAuth) y expone CRUD para dominios/usuarios, exportaciones y auditoría con almacenamiento local cuando Stalwart no está disponible.
+- ✅ Panel IT consulta Prometheus/Loki/Restic mediante rutas API internas y ofrece visualizaciones con Recharts.
+- 🔜 Próximos pasos: conectar acciones de exportación al API real de Stalwart y endurecer validaciones en formularios.
 
 ## Fase 3 — Observabilidad y Backups
 
@@ -67,8 +71,10 @@ Este documento describe el plan de ejecución por fases para la suite **MailiaCr
 - Auditoría encadenada para eventos críticos.
 
 **Estado actual:**
-- ⚠️ Configuraciones base de Loki/Promtail presentes, sin dashboards ni alertas predefinidas.
-- 🔜 Próximos pasos: definir fuentes de métricas, crear dashboards, automatizar pruebas de restore y documentar políticas de retención.
+- ✅ Prometheus incorporado con scrapes de Stalwart, cadvisor, node-exporter, send-router y restic-scheduler.
+- ✅ Alertmanager enviando incidencias a send-router; Grafana auto-provisiona datasources y tablero "MailiaCreate Overview".
+- ✅ Servicio `restic-scheduler` registra estado en disco, expone métricas y API `/status`/`/run`.
+- 🔜 Próximos pasos: conectar repositorios remotos (S3/MinIO) y agregar pruebas automáticas de restore a CI.
 
 ## Fase 4 — Send-Router & Extensiones
 

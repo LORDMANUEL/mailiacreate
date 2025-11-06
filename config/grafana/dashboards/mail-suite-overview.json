@@ -1,0 +1,51 @@
+{
+  "id": null,
+  "uid": "mail-suite-overview",
+  "title": "MailiaCreate Overview",
+  "tags": ["mailiacreate"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "SMTP Queue Length",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "expr": "stalwart_smtp_queue_length",
+          "legendFormat": "Queue",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "JMAP Latency",
+      "gridPos": { "x": 6, "y": 0, "w": 18, "h": 8 },
+      "targets": [
+        {
+          "expr": "rate(stalwart_jmap_request_duration_seconds_sum[5m]) / rate(stalwart_jmap_request_duration_seconds_count[5m])",
+          "legendFormat": "latency",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "logs",
+      "title": "Recent Errors",
+      "gridPos": { "x": 0, "y": 8, "w": 24, "h": 9 },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "targets": [
+        {
+          "expr": "{level=~\"error|warning\"}",
+          "refId": "A"
+        }
+      ]
+    }
+  ]
+}

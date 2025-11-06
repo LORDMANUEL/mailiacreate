@@ -1,0 +1,14 @@
+{
+  "name": "restic-scheduler",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "node-cron": "^3.0.3",
+    "prom-client": "^15.1.1"
+  }
+}

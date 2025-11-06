@@ -30,10 +30,22 @@ chat.example.com {
   reverse_proxy element:80
 }
 
+matrix.example.com {
+  reverse_proxy synapse:8008
+}
+
 sso.example.com {
   reverse_proxy keycloak:8080
 }
 
 meet.example.com {
   reverse_proxy jitsi-web:80
+}
+
+cloud.example.com {
+  reverse_proxy nextcloud:80
+}
+
+grafana.example.com {
+  reverse_proxy grafana:3000
 }

@@ -23,6 +23,8 @@ services:
       - keycloak
       - element
       - jitsi-web
+      - nextcloud
+      - prometheus
 
   stalwart:
     image: stalwartlabs/mail-server:latest
@@ -48,22 +50,39 @@ services:
       - stalwart
 
   admin-panel:
-    image: ghcr.io/mailiacreate/admin-panel:latest
+    build:
+      context: ../services/admin-panel
     restart: unless-stopped
     environment:
       <<: *shared-env
-      API_BASE_URL: "https://mail.example.com/admin/api"
+      NEXTAUTH_URL: "https://mail.example.com/admin"
+      KEYCLOAK_ISSUER: "https://sso.example.com/realms/${KEYCLOAK_REALM:-mailiacreate}"
+      KEYCLOAK_CLIENT_ID: "${KEYCLOAK_ADMIN_CLIENT_ID:-mail-suite-admin}"
+      KEYCLOAK_CLIENT_SECRET: "${KEYCLOAK_ADMIN_CLIENT_SECRET:-change_me}"
+      STALWART_ADMIN_URL: "http://stalwart:8080/admin"
+      STALWART_ADMIN_USER: "admin"
+      STALWART_ADMIN_PASSWORD: "change_me"
     depends_on:
       - keycloak
+      - stalwart
 
   it-panel:
-    image: ghcr.io/mailiacreate/it-panel:latest
+    build:
+      context: ../services/it-panel
     restart: unless-stopped
     environment:
       <<: *shared-env
-      METRICS_BASE_URL: "http://grafana:3000"
+      NEXTAUTH_URL: "https://mail.example.com/it"
+      KEYCLOAK_ISSUER: "https://sso.example.com/realms/${KEYCLOAK_REALM:-mailiacreate}"
+      KEYCLOAK_CLIENT_ID: "${KEYCLOAK_IT_CLIENT_ID:-mail-suite-it}"
+      KEYCLOAK_CLIENT_SECRET: "${KEYCLOAK_IT_CLIENT_SECRET:-change_me}"
+      PROMETHEUS_URL: "http://prometheus:9090"
+      LOKI_URL: "http://loki:3100"
+      RESTIC_STATUS_URL: "http://restic-scheduler:8000/status"
     depends_on:
       - grafana
+      - prometheus
+      - loki
 
   send-router:
     build:
@@ -94,7 +113,7 @@ services:
       KEYCLOAK_ADMIN_PASSWORD: change_me
       KC_PROXY: edge
       KC_DB: dev-file
-    command: ["start-dev", "--http-enabled", "true", "--hostname", "sso.example.com"]
+    command: ["start-dev", "--http-enabled", "true", "--hostname", "sso.example.com", "--http-port", "8080"]
     ports:
       - "8080:8080"
 
@@ -105,6 +124,13 @@ services:
       <<: *shared-env
     ports:
       - "3000:3000"
+    volumes:
+      - ../config/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ../config/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ../config/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+      - loki
 
   loki:
     image: grafana/loki:3.1.1
@@ -141,8 +167,14 @@ services:
       <<: *shared-env
       SYNAPSE_SERVER_NAME: chat.example.com
       SYNAPSE_REPORT_STATS: "no"
+      SYNAPSE_CONFIG_PATH: /data/homeserver.yaml
+      SYNAPSE_REGISTRATION_SHARED_SECRET: ${MATRIX_REGISTRATION_SHARED_SECRET:-supersecret}
+      SYNAPSE_METRICS_PORT: 9090
+      SYNAPSE_METRICS_INTERFACE: 0.0.0.0
     volumes:
       - synapse-data:/data
+      - ../config/synapse/homeserver.yaml:/data/homeserver.yaml:ro
+      - ../config/synapse/log.yaml:/data/log.yaml:ro
 
   jitsi-web:
     image: jitsi/web:stable-9230
@@ -154,10 +186,114 @@ services:
       - "4443:4443"
       - "10000:10000/udp"
 
+  nextcloud:
+    image: nextcloud:29-apache
+    restart: unless-stopped
+    environment:
+      <<: *shared-env
+      NEXTCLOUD_ADMIN_USER: ${NEXTCLOUD_ADMIN_USER:-admin}
+      NEXTCLOUD_ADMIN_PASSWORD: ${NEXTCLOUD_ADMIN_PASSWORD:-change_me}
+      NEXTCLOUD_TRUSTED_DOMAINS: "cloud.example.com"
+      OVERWRITECLIURL: "https://cloud.example.com"
+      OVERWRITEPROTOCOL: https
+      MYSQL_HOST: nextcloud-db
+      MYSQL_DATABASE: nextcloud
+      MYSQL_USER: nextcloud
+      MYSQL_PASSWORD: change_me
+      REDIS_HOST: redis
+    volumes:
+      - nextcloud-data:/var/www/html
+    depends_on:
+      - nextcloud-db
+      - redis
+
+  nextcloud-db:
+    image: mariadb:10.11
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: change_me
+      MYSQL_DATABASE: nextcloud
+      MYSQL_USER: nextcloud
+      MYSQL_PASSWORD: change_me
+    volumes:
+      - nextcloud-db-data:/var/lib/mysql
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+    volumes:
+      - ../config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../config/prometheus/rules:/etc/prometheus/rules:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    depends_on:
+      - cadvisor
+      - node-exporter
+      - stalwart
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/alertmanager/config.yml"
+    ports:
+      - "9093:9093"
+    volumes:
+      - ../config/alertmanager/config.yml:/etc/alertmanager/config.yml:ro
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    restart: unless-stopped
+    privileged: true
+    ports:
+      - "8081:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+
+  node-exporter:
+    image: prom/node-exporter:v1.7.0
+    restart: unless-stopped
+    pid: host
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|run|var/lib/docker/.+)"
+
+  restic-scheduler:
+    build:
+      context: ../services/restic-scheduler
+    restart: unless-stopped
+    environment:
+      <<: *shared-env
+      RESTIC_REPOSITORY: ${RESTIC_REPOSITORY:-/backups}
+      RESTIC_PASSWORD: ${RESTIC_PASSWORD:-changeme}
+    volumes:
+      - restic-data:/app/state
+
 volumes:
   caddy-data:
   caddy-config:
   stalwart-data:
   synapse-data:
   loki-data:
+  nextcloud-data:
+  nextcloud-db-data:
+  prometheus-data:
+  restic-data:
 
