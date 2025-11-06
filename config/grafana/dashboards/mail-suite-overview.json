@@ -2,7 +2,9 @@
   "id": null,
   "uid": "mail-suite-overview",
   "title": "MailiaCreate Overview",
-  "tags": ["mailiacreate"],
+  "tags": [
+    "mailiacreate"
+  ],
   "timezone": "browser",
   "schemaVersion": 39,
   "version": 1,
@@ -11,7 +13,12 @@
     {
       "type": "stat",
       "title": "SMTP Queue Length",
-      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
       "targets": [
         {
           "expr": "stalwart_smtp_queue_length",
@@ -23,7 +30,12 @@
     {
       "type": "graph",
       "title": "JMAP Latency",
-      "gridPos": { "x": 6, "y": 0, "w": 18, "h": 8 },
+      "gridPos": {
+        "x": 6,
+        "y": 0,
+        "w": 18,
+        "h": 8
+      },
       "targets": [
         {
           "expr": "rate(stalwart_jmap_request_duration_seconds_sum[5m]) / rate(stalwart_jmap_request_duration_seconds_count[5m])",
@@ -35,7 +47,12 @@
     {
       "type": "logs",
       "title": "Recent Errors",
-      "gridPos": { "x": 0, "y": 8, "w": 24, "h": 9 },
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 24,
+        "h": 9
+      },
       "datasource": {
         "type": "loki",
         "uid": "loki"
@@ -43,6 +60,45 @@
       "targets": [
         {
           "expr": "{level=~\"error|warning\"}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Send-Router Throughput",
+      "gridPos": {
+        "x": 0,
+        "y": 17,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "expr": "increase(send_router_jobs_completed_total[5m])",
+          "legendFormat": "Completados",
+          "refId": "A"
+        },
+        {
+          "expr": "increase(send_router_jobs_failed_total[5m])",
+          "legendFormat": "Fallidos",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "AI Risk Average",
+      "gridPos": {
+        "x": 12,
+        "y": 17,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "expr": "ai_orchestrator_risk_score_sum / clamp_min(ai_orchestrator_risk_score_count, 1)",
+          "legendFormat": "Riesgo promedio",
           "refId": "A"
         }
       ]

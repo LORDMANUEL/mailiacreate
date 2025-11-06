@@ -26,3 +26,21 @@ groups:
         annotations:
           summary: "Synapse no responde"
           description: "El job matrix-synapse dejó de exponer métricas en los últimos 2 minutos."
+
+      - alert: SendRouterDeliveryFailures
+        expr: increase(send_router_jobs_failed_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Fallos en entregas del send-router"
+          description: "Se detectaron trabajos fallidos en los últimos 5 minutos. Revisa los logs del servicio send-router."
+
+      - alert: AIRiskSpike
+        expr: (ai_orchestrator_risk_score_sum / clamp_min(ai_orchestrator_risk_score_count, 1)) > 0.7
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Alto riesgo promedio en el pre-chequeo de IA"
+          description: "El puntaje promedio del servicio de IA supera 0.7 en los últimos 10 minutos."

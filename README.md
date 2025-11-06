@@ -31,8 +31,10 @@ Este repositorio alberga la planificación y los artefactos del proyecto “Mail
    - `admin-panel`: Next.js + Keycloak con gestión de dominios/usuarios/exportaciones (este repositorio builda la imagen).
    - `it-panel`: Next.js + Grafana/Prometheus/Loki para monitoreo en tiempo real (imagen construida localmente).
    - `keycloak`: SSO OIDC central para webmail, panel admin e IT, Matrix y Nextcloud.
-   - `send-router`: microservicio Node.js multi-canal (`POST /api/send`) + receptor de alertas.
-   - `nats`: cola ligera para orquestación de jobs futuros.
+   - `send-router`: microservicio Node.js multi-canal con cola BullMQ sobre Redis, drivers SMTP/Matrix/Webhook/S3 y análisis previo de IA.
+   - `send-router-redis`: backend Redis dedicado para la cola del send-router.
+   - `ai-orchestrator`: servicio heurístico que clasifica y resume los mensajes antes de enviarlos.
+   - `minio`: almacenamiento S3-compatible para exportaciones/adjuntos gestionados por send-router.
    - `synapse` + `element`: chat Matrix integrado vía OIDC.
    - `jitsi-web`: videollamadas con soporte TURN.
    - `nextcloud`, `nextcloud-db`, `redis`: colaboración (archivos, CardDAV/CalDAV) sincronizada con el ecosistema.
@@ -58,6 +60,14 @@ Este repositorio alberga la planificación y los artefactos del proyecto “Mail
 
    El endpoint `/api/hooks/alerts` recibe webhooks de Alertmanager para correlacionar incidencias con otros canales.
 
+   Consulta el estado de una entrega con:
+
+   ```bash
+   curl https://mail.example.com/api/jobs/<JOB_ID>
+   ```
+
+   Si está habilitado `SEND_ROUTER_AI_URL`, cada solicitud pasa por el servicio `ai-orchestrator` y se rechaza automáticamente cuando el riesgo supera el umbral configurado.
+
 6. **Accesos clave tras el despliegue**:
 
    - Webmail: `https://mail.<dominio>/`
@@ -69,6 +79,14 @@ Este repositorio alberga la planificación y los artefactos del proyecto “Mail
 
 > ⚠️ Ajusta dominios, credenciales y certificados en `compose/.env` antes de producción.
 > Puedes sobrescribir `MAILIACREATE_REPO` y `MAILIACREATE_HOME` antes de ejecutar el instalador para personalizar la ubicación del proyecto.
+
+7. **Hardening rápido**:
+
+   ```bash
+   ./scripts/hardening-check.sh
+   ```
+
+   El script valida que las credenciales críticas no estén con valores por defecto y que el proxy incluya cabeceras seguras.
 
 ---
 

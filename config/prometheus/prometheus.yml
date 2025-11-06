@@ -34,6 +34,11 @@ scrape_configs:
     static_configs:
       - targets: ['send-router:4000']
 
+  - job_name: ai-orchestrator
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['ai-orchestrator:4100']
+
   - job_name: restic-scheduler
     metrics_path: /metrics
     static_configs:

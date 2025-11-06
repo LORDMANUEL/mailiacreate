@@ -13,6 +13,10 @@
 - `RESTIC_REPOSITORY`, `RESTIC_PASSWORD`: valores consumidos por el scheduler de backups.
 - `RESTIC_STATUS_URL`: endpoint HTTP que consulta el panel IT (por defecto el scheduler interno).
 - `MATRIX_REGISTRATION_SHARED_SECRET`: secreto compartido para registros Matrix.
+- `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`: credenciales para el almacenamiento S3 interno.
+- `SEND_ROUTER_WEBHOOK_TOKEN`: token compartido para asegurar webhooks salientes.
+- `SEND_ROUTER_SMTP_FROM`, `SEND_ROUTER_SMTP_HOST/PORT`: remitente y relay usados por send-router.
+- `SEND_ROUTER_AI_URL`, `SEND_ROUTER_AI_THRESHOLD`: controlan el análisis previo de IA.
 
 ## Instalador
 
@@ -40,7 +44,11 @@ El servicio expone `POST /api/send` con los campos:
 - `subject`, `text`, `html`.
 - `attachments`: archivos (multipart) o referencias S3.
 
-Para activar almacenamiento externo, define `SEND_ROUTER_STORAGE=minio,s3` y proporciona credenciales via `docker secrets` o variables.
+Internamente send-router usa BullMQ con un backend Redis dedicado (`send-router-redis`). Puedes supervisar los jobs con `GET /api/jobs/<id>` o consultando las métricas en `/metrics` (scrapeadas por Prometheus).
+
+Para activar almacenamiento externo, define `SEND_ROUTER_STORAGE=minio` y proporciona credenciales vía variables de entorno (`SEND_ROUTER_S3_*`).
+
+Si configuras `SEND_ROUTER_AI_URL`, cada mensaje pasa por `ai-orchestrator`; valores de riesgo superiores a `SEND_ROUTER_AI_THRESHOLD` pueden bloquear la entrega cuando `SEND_ROUTER_AI_ENFORCE=true`.
 
 ## Mantenimiento
 
@@ -52,3 +60,9 @@ Para activar almacenamiento externo, define `SEND_ROUTER_STORAGE=minio,s3` y pro
 - **Alertas**: Alertmanager reenvía eventos a `send-router` (`/api/hooks/alerts`). Ajusta integraciones adicionales según tus flujos.
 - **Agregar certificados personalizados**: monta directorio en servicio `caddy` con TLS manual.
 - **Escalado**: utiliza `docker compose up -d --scale webmail=2` y configura balanceo en Caddy.
+
+## Hardening previo a producción
+
+- Ejecuta `./scripts/hardening-check.sh` y corrige cualquier advertencia de credenciales.
+- Verifica cabeceras con `curl -I https://mail.<dominio>` asegurando que HSTS/CSP estén presentes.
+- Actualiza los valores por defecto (`change_me`, `replace_me`) antes de exponer los servicios.

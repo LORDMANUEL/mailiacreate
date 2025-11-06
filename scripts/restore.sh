@@ -16,6 +16,8 @@ volumes=(
   nextcloud-db-data
   prometheus-data
   restic-data
+  send-router-redis-data
+  minio-data
 )
 for volume in "${volumes[@]}"; do
   archive="$BACKUP_DIR/${volume}.tgz"

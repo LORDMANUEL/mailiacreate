@@ -10,7 +10,9 @@ Este documento describe el plan de ejecución por fases para la suite **MailiaCr
 | 1 | Colaboración | Integrar servicios colaborativos (calendario, contactos, chat, videollamadas). | ✅ Completada | Nextcloud + Redis/MariaDB operativos, Matrix/Element/Jitsi integrados con Keycloak. |
 | 2 | Paneles Admin/IT | Construir paneles Next.js para administración y operaciones. | ✅ Completada | Paneles Next.js con OIDC, CRUD dominios/usuarios, dashboards y exportaciones documentadas. |
 | 3 | Observabilidad & Backups | Refinar monitoreo, alertas, auditoría y procesos de backup/restore. | ✅ Completada | Prometheus/Alertmanager/Grafana provisionados, restic scheduler con métricas y políticas. |
-| 4 | Send-Router & Extensiones | Ampliar entrega multi-canal y capacidades opcionales (AI, automatizaciones). | Pendiente | Servicio esqueleto creado; falta robustecer colas, métricas y pruebas multi-canal. |
+| 4 | Send-Router & Extensiones | Ampliar entrega multi-canal y capacidades opcionales (AI, automatizaciones). | ✅ Completada | Cola BullMQ con Redis dedicado, drivers SMTP/Matrix/Webhook/S3 y métricas Prometheus en producción. |
+| 5 | IA & Automatización | Clasificación de riesgo, resúmenes y recomendaciones antes del envío. | ✅ Completada | Servicio `ai-orchestrator` provee API `/api/analyze`/`/api/summarize` con heurísticas y métricas. |
+| 6 | Hardening & Go-Live | Endurecer superficie, validar secretos y políticas antes de lanzamiento. | ✅ Completada | Cabeceras CSP/HSTS en proxy y script `hardening-check.sh` para auditoría previa. |
 
 ---
 
@@ -86,8 +88,38 @@ Este documento describe el plan de ejecución por fases para la suite **MailiaCr
 - Opcional: módulos de IA para clasificación/anomalías.
 
 **Estado actual:**
-- ⚠️ Microservicio base Node.js creado sin drivers concretos ni observabilidad.
-- 🔜 Próximos pasos: diseñar contrato de drivers, implementar canal email (SMTP) y Matrix, añadir tracing y dashboards, definir proceso de despliegue continuo.
+- ✅ Send-router usa BullMQ sobre un Redis dedicado (`send-router-redis`) con reintentos exponenciales, API `/api/jobs/:id` y métricas Prometheus.
+- ✅ Drivers implementados: SMTP (Nodemailer hacia Stalwart), Matrix (client API), Webhooks con firma y almacenamiento MinIO mediante firma SigV4.
+- ✅ Integración opcional con IA mediante `SEND_ROUTER_AI_URL`; bloqueo automático configurable por riesgo.
+- 🔜 Próximos pasos: agregar dashboards específicos en Grafana y workers dedicados para canales adicionales (SMS/push).
+
+## Fase 5 — IA & Automatización
+
+**Objetivo:** Clasificar el riesgo de los mensajes, generar resúmenes rápidos y recomendar acciones preventivas.
+
+**Entregables:**
+- Servicio heurístico expuesto vía HTTP con endpoints de análisis y resumen.
+- Métricas de riesgo/clasificación para Prometheus y consumo por paneles IT.
+- Integración con send-router para pre-chequeo antes de encolar mensajes.
+
+**Estado actual:**
+- ✅ Servicio `ai-orchestrator` (Node.js) con heurísticas de spam/phishing, histograma de riesgos y extracción de keywords.
+- ✅ Integración con send-router para bloquear entregas de riesgo alto y registrar el resultado del pre-chequeo.
+- 🔜 Próximos pasos: permitir entrenamiento incremental vía datasets etiquetados y exponer webhooks para retroalimentación de usuarios.
+
+## Fase 6 — Hardening & Go-Live
+
+**Objetivo:** Garantizar una superficie endurecida y comprobable antes de la puesta en producción.
+
+**Entregables:**
+- Cabeceras de seguridad (HSTS, CSP, Permissions-Policy, X-Frame-Options) aplicadas desde el proxy TLS.
+- Checklist automatizado para evitar credenciales por defecto y validar configuración base.
+- Documentación de pasos finales para el cutover a producción.
+
+**Estado actual:**
+- ✅ `config/caddy/Caddyfile` incorpora un bloque reutilizable `header-security` aplicado a todos los vhosts.
+- ✅ Script `scripts/hardening-check.sh` detecta valores inseguros en `compose/.env` y verifica la presencia del hardening en proxy.
+- 🔜 Próximos pasos: integrar el script en CI/CD y ampliar verificaciones (TLS report-uri, headers de Nextcloud específicos).
 
 ---
 

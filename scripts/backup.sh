@@ -18,6 +18,8 @@ volumes=(
   nextcloud-db-data
   prometheus-data
   restic-data
+  send-router-redis-data
+  minio-data
 )
 for volume in "${volumes[@]}"; do
   echo "[backup] Saving $volume"
