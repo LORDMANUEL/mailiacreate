@@ -1,5 +1,11 @@
 version: '3'
 
+networks:
+  mailkit_net:
+    external: true
+  jitsi_net:
+    internal: true
+
 services:
     # Frontend
     web:
@@ -30,9 +36,8 @@ services:
             - JIBRI_RECORDER_PASSWORD
             - TZ
         networks:
-            meet.jitsi:
-                aliases:
-                    - ${XMPP_DOMAIN}
+            - mailkit_net
+            - jitsi_net
 
     # XMPP server
     prosody:
@@ -78,9 +83,7 @@ services:
             - ENABLE_GUESTS
             - AUTH_TYPE
         networks:
-            meet.jitsi:
-                aliases:
-                    - xmpp.${XMPP_DOMAIN}
+            - jitsi_net
 
     # Focus component
     jicofo:
@@ -107,7 +110,7 @@ services:
         depends_on:
             - prosody
         networks:
-            meet.jitsi:
+            - jitsi_net
 
     # Video bridge
     jvb:
@@ -134,7 +137,4 @@ services:
         depends_on:
             - prosody
         networks:
-            meet.jitsi:
-
-networks:
-    meet.jitsi:
+            - jitsi_net

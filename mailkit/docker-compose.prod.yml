@@ -1,5 +1,9 @@
 version: '3.8'
 
+networks:
+  mailkit_net:
+    external: true
+
 services:
   caddy:
     image: caddy:2-alpine
@@ -11,9 +15,11 @@ services:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data
       - caddy_config:/config
+    networks:
+      - mailkit_net
 
   stalwart:
-    image: stalwartlabs/stalwart-mail:latest
+    image: stalwartlabs/mail-server:latest
     restart: unless-stopped
     ports:
       - "25:25"   # SMTP
@@ -23,30 +29,40 @@ services:
     volumes:
       - ./stalwart/config.toml:/etc/stalwart-mail/config.toml
       - stalwart_data:/data
+    networks:
+      - mailkit_net
 
   webmail:
     build: ./src/webmail
     restart: unless-stopped
     expose:
       - 3000
+    networks:
+      - mailkit_net
 
   admin-panel:
     build: ./src/admin-panel
     restart: unless-stopped
     expose:
       - 3000
+    networks:
+      - mailkit_net
 
   it-panel:
     build: ./src/it-panel
     restart: unless-stopped
     expose:
       - 3000
+    networks:
+      - mailkit_net
 
   send-router:
     build: ./src/send-router
     restart: unless-stopped
     expose:
       - 3000
+    networks:
+      - mailkit_net
 
   db:
     image: mariadb
@@ -59,6 +75,8 @@ services:
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
       - MYSQL_DATABASE=nextcloud
       - MYSQL_USER=nextcloud
+    networks:
+      - mailkit_net
 
   nextcloud:
     image: nextcloud
@@ -72,22 +90,30 @@ services:
       - MYSQL_DATABASE=nextcloud
       - MYSQL_USER=nextcloud
       - MYSQL_HOST=db
+    networks:
+      - mailkit_net
 
   synapse:
     image: matrixdotorg/synapse:latest
     restart: unless-stopped
     volumes:
       - synapse_data:/data
+    networks:
+      - mailkit_net
 
   element:
     image: vectorim/element-web:latest
     restart: unless-stopped
+    networks:
+      - mailkit_net
 
   loki:
     image: grafana/loki:2.4.1
     restart: unless-stopped
     volumes:
       - loki_data:/loki
+    networks:
+      - mailkit_net
 
   promtail:
     image: grafana/promtail:2.4.1
@@ -95,12 +121,16 @@ services:
     volumes:
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - ./promtail/config.yml:/etc/promtail/config.yml
+    networks:
+      - mailkit_net
 
   grafana:
     image: grafana/grafana:8.3.3
     restart: unless-stopped
     volumes:
       - grafana_data:/var/lib/grafana
+    networks:
+      - mailkit_net
 
   restic-cron:
     image: restic/restic
@@ -113,6 +143,8 @@ services:
       - ./backups:/backups
       - restic_cache:/root/.cache/restic
       - stalwart_data:/data
+    networks:
+      - mailkit_net
 
 volumes:
   caddy_data:
