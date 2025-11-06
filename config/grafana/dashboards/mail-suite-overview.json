@@ -102,6 +102,40 @@
           "refId": "A"
         }
       ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Send-Router Sentry Events",
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "expr": "increase(send_router_sentry_events_total[5m])",
+          "legendFormat": "{{source}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "AI Orchestrator Sentry Events",
+      "gridPos": {
+        "x": 12,
+        "y": 24,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "expr": "increase(ai_orchestrator_sentry_events_total[5m])",
+          "legendFormat": "{{source}}",
+          "refId": "A"
+        }
+      ]
     }
   ]
 }

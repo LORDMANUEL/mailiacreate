@@ -46,7 +46,7 @@ MailiaCreate es una plataforma de correo y colaboración empresarial lista para 
 - **Experiencia de usuario:** webmail Next.js tipo Gmail, panel admin para dominios/usuarios/exportaciones y panel IT para métricas, logs y backups.
 - **Colaboración:** Matrix/Element, Jitsi, Nextcloud y MinIO integrados con SSO Keycloak.
 - **Automatización:** instalador guiado, send-router multi-canal con IA preventiva, scheduler Restic, bridge SCIM y exporter de monitoreo sintético.
-- **Observabilidad y seguridad:** Prometheus, Grafana, Loki, Alertmanager, verificaciones de hardening, cabeceras TLS endurecidas y auditoría completa.
+- **Observabilidad y seguridad:** Prometheus, Grafana, Loki, Alertmanager, paneles adicionales con eventos Sentry, verificaciones de hardening, cabeceras TLS endurecidas y auditoría completa.
 - **CI/CD:** workflows que validan dependencias, construyen artefactos Next.js, publican imágenes multi-arquitectura y ejercitan restauraciones Restic programadas.
 
 ---
@@ -64,6 +64,7 @@ MailiaCreate es una plataforma de correo y colaboración empresarial lista para 
 - **Automatización multi-canal** mediante send-router (email, Matrix, webhooks, S3) enriquecido con IA de riesgo y colas BullMQ/Redis.
 - **Identidad automatizada** gracias a un bridge SCIM que consume eventos HRIS para alinear Keycloak y Stalwart.
 - **Monitoreo sintético** continuo con exportador Prometheus y alertas listas para ejecutar.
+- **Analítica de experiencia** con Sentry (frontend/backend), Mixpanel y Hotjar para medir uso real y detectar errores temprano.
 
 ### Experiencia “clonar y ejecutar”
 
@@ -113,6 +114,8 @@ sudo ./scripts/deploy.sh
 
 Todos los servicios están definidos en [`compose/docker-compose.prod.yml`](compose/docker-compose.prod.yml) y pueden ejecutarse en modo laboratorio mediante el override [`compose/docker-compose.local.yml`](compose/docker-compose.local.yml).
 
+Para escenarios activos/activos con balanceadores dedicados se incluye la definición opcional [`compose/docker-compose.ha.yml`](compose/docker-compose.ha.yml) junto con un `haproxy` preconfigurado y guías de failover con Keepalived.
+
 ---
 
 ## Operaciones esenciales
@@ -157,6 +160,7 @@ El proyecto está listo para producción, pero se documentan iniciativas para se
 
 - [`docs/DESARROLLO_PLAN.md`](docs/DESARROLLO_PLAN.md): fases, entregables y estado histórico del proyecto.
 - [`docs/BLUEPRINT_MEJORAS.md`](docs/BLUEPRINT_MEJORAS.md): hoja de ruta visual y funcional para futuras iteraciones (webmail avanzado, integraciones n8n, IA, etc.).
+- [`docs/HA_CLUSTER_GUIDE.md`](docs/HA_CLUSTER_GUIDE.md): referencia para desplegar un clúster de 4 nodos con HAProxy, Keepalived y replicación de Stalwart.
 - [`docs/OPERATIONS.md`](docs/OPERATIONS.md): procedimientos diarios, rotación de claves, troubleshooting y guías de auditoría.
 - [`docs/QA/`](docs/QA): bitácoras de pruebas por fase y regresión final.
 

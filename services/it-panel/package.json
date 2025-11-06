@@ -8,7 +8,10 @@
     "start": "next start"
   },
   "dependencies": {
+    "@hotjar/browser": "^1.1.12",
+    "@sentry/nextjs": "^7.103.0",
     "dotenv": "^16.4.5",
+    "mixpanel-browser": "^2.52.0",
     "next": "14.2.5",
     "next-auth": "^5.0.0-beta.9",
     "react": "18.3.1",

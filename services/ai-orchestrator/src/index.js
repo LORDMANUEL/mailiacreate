@@ -3,6 +3,7 @@ import client from 'prom-client';
 import crypto from 'crypto';
 import { promises as fs } from 'fs';
 import path from 'path';
+import * as Sentry from '@sentry/node';
 
 const PORT = Number(process.env.PORT || 4100);
 const MAX_BODY = Number(process.env.AI_ORCHESTRATOR_MAX_BODY_KB || 2048) * 1024;
@@ -24,7 +25,18 @@ const suspiciousTerms = [
 const bulkIndicators = ['mailing list', 'unsubscribe', 'newsletter', 'mass message'];
 const stopWords = new Set(['the', 'a', 'an', 'and', 'or', 'of', 'in', 'on', 'for', 'with', 'to', 'de', 'la', 'el', 'los', 'las']);
 
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || 'development',
+    tracesSampleRate: Number(process.env.SENTRY_TRACES_SAMPLE_RATE || 0.1)
+  });
+}
+
 const app = express();
+if (process.env.SENTRY_DSN) {
+  app.use(Sentry.Handlers.requestHandler());
+}
 app.use(express.json({ limit: MAX_BODY }));
 
 const DATA_DIR = process.env.AI_DATA_DIR || path.join(process.cwd(), 'data');
@@ -40,6 +52,10 @@ async function bootstrapFeedbackStore() {
   } catch (error) {
     if (error.code !== 'ENOENT') {
       console.warn('[ai-orchestrator] No se pudo cargar feedback existente:', error.message);
+      if (process.env.SENTRY_DSN) {
+        Sentry.captureException(error);
+        sentryCounter.inc({ source: 'storage' });
+      }
     }
     feedbackBuffer = [];
   }
@@ -68,10 +84,16 @@ const feedbackCounter = new client.Counter({
   help: 'Cantidad de muestras de feedback registradas',
   labelNames: ['label']
 });
+const sentryCounter = new client.Counter({
+  name: 'ai_orchestrator_sentry_events_total',
+  help: 'Eventos reportados a Sentry por tipo',
+  labelNames: ['source']
+});
 
 register.registerMetric(classificationCounter);
 register.registerMetric(riskHistogram);
 register.registerMetric(feedbackCounter);
+register.registerMetric(sentryCounter);
 
 function stripHtml(html = '') {
   return html.replace(/<[^>]*>/g, ' ');
@@ -213,6 +235,10 @@ app.post('/api/analyze', (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('[ai-orchestrator] analyze error', error.message);
+    if (process.env.SENTRY_DSN) {
+      Sentry.captureException(error);
+      sentryCounter.inc({ source: 'analyze' });
+    }
     res.status(400).json({ error: 'Invalid payload' });
   }
 });
@@ -224,6 +250,10 @@ app.post('/api/summarize', (req, res) => {
     res.json({ summary });
   } catch (error) {
     console.error('[ai-orchestrator] summarize error', error.message);
+    if (process.env.SENTRY_DSN) {
+      Sentry.captureException(error);
+      sentryCounter.inc({ source: 'summarize' });
+    }
     res.status(400).json({ error: 'Invalid payload' });
   }
 });
@@ -252,11 +282,27 @@ app.post('/api/feedback', async (req, res) => {
     await fs.writeFile(FEEDBACK_FILE, JSON.stringify(feedbackBuffer, null, 2));
   } catch (error) {
     console.error('[ai-orchestrator] No se pudo persistir feedback', error.message);
+    if (process.env.SENTRY_DSN) {
+      Sentry.captureException(error);
+      sentryCounter.inc({ source: 'feedback' });
+    }
     return res.status(500).json({ error: 'Unable to persist feedback' });
   }
   feedbackCounter.inc({ label });
   res.status(201).json(sample);
 });
+
+if (process.env.SENTRY_DSN) {
+  app.use(Sentry.Handlers.errorHandler());
+  process.on('unhandledRejection', (error) => {
+    Sentry.captureException(error);
+    sentryCounter.inc({ source: 'process' });
+  });
+  process.on('uncaughtException', (error) => {
+    Sentry.captureException(error);
+    sentryCounter.inc({ source: 'process' });
+  });
+}
 
 app.listen(PORT, () => {
   console.log(`[ai-orchestrator] Listening on :${PORT}`);

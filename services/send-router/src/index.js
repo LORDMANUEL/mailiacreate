@@ -9,6 +9,7 @@ import crypto from 'crypto';
 import https from 'https';
 import http from 'http';
 import { URL } from 'url';
+import * as Sentry from '@sentry/node';
 
 const PORT = Number(process.env.PORT || 4000);
 const QUEUE_NAME = process.env.SEND_ROUTER_QUEUE || 'send-router-jobs';
@@ -24,7 +25,19 @@ const AI_URL = process.env.SEND_ROUTER_AI_URL || '';
 const AI_THRESHOLD = Number(process.env.SEND_ROUTER_AI_THRESHOLD || 0.75);
 const AI_ENFORCE = process.env.SEND_ROUTER_AI_ENFORCE === 'true';
 
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || 'development',
+    tracesSampleRate: Number(process.env.SENTRY_TRACES_SAMPLE_RATE || 0.1)
+  });
+}
+
 const app = express();
+if (process.env.SENTRY_DSN) {
+  app.use(Sentry.Handlers.requestHandler());
+  app.use(Sentry.Handlers.tracingHandler());
+}
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: Number(process.env.SEND_ROUTER_MAX_ATTACHMENT || 25) * 1024 * 1024 }
@@ -66,6 +79,11 @@ const aiRiskGauge = new client.Gauge({
   help: 'Último puntaje de riesgo devuelto por IA',
   labelNames: ['channel']
 });
+const sentryCounter = new client.Counter({
+  name: 'send_router_sentry_events_total',
+  help: 'Eventos notificados a Sentry',
+  labelNames: ['source']
+});
 
 register.registerMetric(enqueueCounter);
 register.registerMetric(completedCounter);
@@ -73,6 +91,7 @@ register.registerMetric(failedCounter);
 register.registerMetric(queueGauge);
 register.registerMetric(processingGauge);
 register.registerMetric(aiRiskGauge);
+register.registerMetric(sentryCounter);
 
 const redisConnection = {
   host: REDIS_HOST,
@@ -93,14 +112,26 @@ const queue = new Queue(QUEUE_NAME, {
 const queueScheduler = new QueueScheduler(QUEUE_NAME, { connection: redisConnection });
 queueScheduler.waitUntilReady().catch((error) => {
   console.error('[send-router] queue scheduler unavailable', error.message);
+  if (process.env.SENTRY_DSN) {
+    Sentry.captureException(error);
+    sentryCounter.inc({ source: 'queue_scheduler' });
+  }
 });
 
 const queueEvents = new QueueEvents(QUEUE_NAME, { connection: redisConnection });
 queueEvents.on('error', (error) => {
   console.error('[send-router] queue event error', error.message);
+  if (process.env.SENTRY_DSN) {
+    Sentry.captureException(error);
+    sentryCounter.inc({ source: 'queue_events' });
+  }
 });
 queueEvents.waitUntilReady().catch((error) => {
   console.error('[send-router] queue events unavailable', error.message);
+  if (process.env.SENTRY_DSN) {
+    Sentry.captureException(error);
+    sentryCounter.inc({ source: 'queue_events' });
+  }
 });
 
 let mailer;
@@ -412,10 +443,18 @@ worker.on('failed', (job, error) => {
   processingGauge.dec({ channel: job.data.channel });
   failedCounter.inc({ channel: job.data.channel });
   console.error('[send-router] job failed', job.id, error.message);
+  if (process.env.SENTRY_DSN) {
+    Sentry.captureException(error);
+    sentryCounter.inc({ source: 'worker' });
+  }
 });
 
 worker.on('error', (error) => {
   console.error('[send-router] worker error', error.message);
+  if (process.env.SENTRY_DSN) {
+    Sentry.captureException(error);
+    sentryCounter.inc({ source: 'worker' });
+  }
 });
 
 async function enqueueJob(payload) {
@@ -487,6 +526,10 @@ app.post('/api/send', upload.any(), async (req, res) => {
     res.status(202).json({ id: job.id, status: 'queued', analysis: aiResult });
   } catch (error) {
     console.error('[send-router] failed to enqueue job', error.message);
+    if (process.env.SENTRY_DSN) {
+      Sentry.captureException(error);
+      sentryCounter.inc({ source: 'api' });
+    }
     res.status(500).json({ error: error.message || 'Failed to enqueue job' });
   }
 });
@@ -504,9 +547,25 @@ app.post('/api/hooks/alerts', async (req, res) => {
     res.json({ received: alerts.length });
   } catch (error) {
     console.error('[send-router] failed to record alert', error.message);
+    if (process.env.SENTRY_DSN) {
+      Sentry.captureException(error);
+      sentryCounter.inc({ source: 'alerts' });
+    }
     res.status(500).json({ error: 'Failed to record alert' });
   }
 });
+
+if (process.env.SENTRY_DSN) {
+  app.use(Sentry.Handlers.errorHandler());
+  process.on('unhandledRejection', (error) => {
+    Sentry.captureException(error);
+    sentryCounter.inc({ source: 'process' });
+  });
+  process.on('uncaughtException', (error) => {
+    Sentry.captureException(error);
+    sentryCounter.inc({ source: 'process' });
+  });
+}
 
 app.listen(PORT, () => {
   console.log(`[send-router] listening on port ${PORT}`);

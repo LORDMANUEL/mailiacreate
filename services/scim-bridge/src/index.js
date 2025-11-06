@@ -1,5 +1,6 @@
 import http from 'node:http';
 import { URL } from 'node:url';
+import * as Sentry from '@sentry/node';
 
 const PORT = Number(process.env.SCIM_BRIDGE_PORT || 8089);
 const HOST = process.env.SCIM_BRIDGE_HOST || '0.0.0.0';
@@ -10,6 +11,14 @@ const KEYCLOAK_CLIENT_SECRET = process.env.KEYCLOAK_CLIENT_SECRET || '';
 const STALWART_ADMIN_URL = process.env.STALWART_ADMIN_URL || '';
 const STALWART_ADMIN_USER = process.env.STALWART_ADMIN_USER || '';
 const STALWART_ADMIN_PASSWORD = process.env.STALWART_ADMIN_PASSWORD || '';
+
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || 'development',
+    tracesSampleRate: Number(process.env.SENTRY_TRACES_SAMPLE_RATE || 0.1)
+  });
+}
 
 const serverState = {
   lastSync: null,
@@ -29,6 +38,9 @@ async function readBody(req) {
   try {
     return JSON.parse(buffer);
   } catch (error) {
+    if (process.env.SENTRY_DSN) {
+      Sentry.captureException(error);
+    }
     throw new Error('Invalid JSON payload');
   }
 }
@@ -203,6 +215,9 @@ async function syncStalwartUser(user) {
       });
       return;
     }
+    if (process.env.SENTRY_DSN) {
+      Sentry.captureException(error);
+    }
     throw error;
   }
 }
@@ -278,7 +293,26 @@ const server = http.createServer(async (req, res) => {
     sendJson(res, 404, { error: 'Not found' });
   } catch (error) {
     serverState.failures += 1;
+    if (process.env.SENTRY_DSN) {
+      Sentry.captureException(error);
+    }
     sendJson(res, 400, { error: error.message || 'Unexpected error' });
+  }
+});
+
+if (process.env.SENTRY_DSN) {
+  process.on('unhandledRejection', (error) => {
+    Sentry.captureException(error);
+  });
+  process.on('uncaughtException', (error) => {
+    Sentry.captureException(error);
+  });
+}
+
+server.on('error', (error) => {
+  console.error('[scim-bridge] server error', error.message);
+  if (process.env.SENTRY_DSN) {
+    Sentry.captureException(error);
   }
 });
 

@@ -1,5 +1,6 @@
 import http from 'node:http';
 import { spawn } from 'node:child_process';
+import * as Sentry from '@sentry/node';
 
 const PORT = Number(process.env.SYNTHETIC_EXPORTER_PORT || 8090);
 const HOST = process.env.SYNTHETIC_EXPORTER_HOST || '0.0.0.0';
@@ -7,6 +8,14 @@ const TARGET_HOST = process.env.SYNTHETIC_TARGET_HOST || '';
 const INTERVAL = Number(process.env.SYNTHETIC_INTERVAL_SECONDS || 300) * 1000;
 const SCRIPT_PATH = process.env.SYNTHETIC_SCRIPT_PATH || '/app/synthetic-checks.sh';
 const EXTRA_ARGS = process.env.SYNTHETIC_EXTRA_ARGS || '';
+
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || 'development',
+    tracesSampleRate: Number(process.env.SENTRY_TRACES_SAMPLE_RATE || 0.1)
+  });
+}
 
 if (!TARGET_HOST) {
   // eslint-disable-next-line no-console
@@ -49,6 +58,12 @@ function runChecks() {
       state.failures += 1;
       // eslint-disable-next-line no-console
       console.error(`synthetic-checks failed (${code}): ${stderr.trim()}`);
+      if (process.env.SENTRY_DSN) {
+        Sentry.captureMessage('synthetic-checks failed', {
+          level: 'error',
+          extra: { code, stderr: stderr.trim() }
+        });
+      }
     } else {
       try {
         const parsed = JSON.parse(stdout || '{}');
@@ -60,6 +75,9 @@ function runChecks() {
         state.failures += 1;
         // eslint-disable-next-line no-console
         console.error(`Unable to parse synthetic output: ${error.message}`);
+        if (process.env.SENTRY_DSN) {
+          Sentry.captureException(error);
+        }
       }
     }
   });
@@ -112,6 +130,22 @@ const server = http.createServer((req, res) => {
   }
   res.writeHead(404, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify({ error: 'Not found' }));
+});
+
+if (process.env.SENTRY_DSN) {
+  process.on('unhandledRejection', (error) => {
+    Sentry.captureException(error);
+  });
+  process.on('uncaughtException', (error) => {
+    Sentry.captureException(error);
+  });
+}
+
+server.on('error', (error) => {
+  console.error('[synthetic-exporter] server error', error.message);
+  if (process.env.SENTRY_DSN) {
+    Sentry.captureException(error);
+  }
 });
 
 server.listen(PORT, HOST, () => {

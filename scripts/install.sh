@@ -298,6 +298,23 @@ else
   set_env_var "$ENV_FILE" "SYNTHETIC_EXTRA_ARGS" ""
 fi
 
+info "Configurando instrumentación y analítica"
+SENTRY_DSN_VALUE=$(prompt_with_default "Sentry DSN (vacío para omitir)" "${SENTRY_DSN:-}")
+SENTRY_ENV_VALUE=$(prompt_with_default "Sentry environment" "${SENTRY_ENVIRONMENT:-production}")
+SENTRY_TRACES_VALUE=$(prompt_with_default "Sentry traces sample rate" "${SENTRY_TRACES_SAMPLE_RATE:-0.1}")
+MIXPANEL_TOKEN_VALUE=$(prompt_with_default "Mixpanel token (vacío para omitir)" "${NEXT_PUBLIC_MIXPANEL_TOKEN:-}")
+HOTJAR_ID_VALUE=$(prompt_with_default "Hotjar site ID (vacío para omitir)" "${NEXT_PUBLIC_HOTJAR_SITE_ID:-}")
+HOTJAR_VERSION_VALUE=$(prompt_with_default "Hotjar script version" "${NEXT_PUBLIC_HOTJAR_VERSION:-6}")
+
+set_env_var "$ENV_FILE" "SENTRY_DSN" "$SENTRY_DSN_VALUE"
+set_env_var "$ENV_FILE" "SENTRY_ENVIRONMENT" "$SENTRY_ENV_VALUE"
+set_env_var "$ENV_FILE" "SENTRY_TRACES_SAMPLE_RATE" "$SENTRY_TRACES_VALUE"
+set_env_var "$ENV_FILE" "NEXT_PUBLIC_SENTRY_DSN" "$SENTRY_DSN_VALUE"
+set_env_var "$ENV_FILE" "NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE" "$SENTRY_TRACES_VALUE"
+set_env_var "$ENV_FILE" "NEXT_PUBLIC_MIXPANEL_TOKEN" "$MIXPANEL_TOKEN_VALUE"
+set_env_var "$ENV_FILE" "NEXT_PUBLIC_HOTJAR_SITE_ID" "$HOTJAR_ID_VALUE"
+set_env_var "$ENV_FILE" "NEXT_PUBLIC_HOTJAR_VERSION" "$HOTJAR_VERSION_VALUE"
+
 source "$ENV_FILE"
 
 info "Resumen de configuración"

@@ -2,6 +2,7 @@ import './globals.css';
 import type { ReactNode } from 'react';
 import { Inter } from 'next/font/google';
 import SessionProvider from '../components/session-provider';
+import AnalyticsProvider from '../components/analytics-provider';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -14,7 +15,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="es" className="h-full">
       <body className={`${inter.className} h-full bg-slate-950 text-slate-100`}>
-        <SessionProvider>{children}</SessionProvider>
+        <SessionProvider>
+          <AnalyticsProvider />
+          {children}
+        </SessionProvider>
       </body>
     </html>
   );

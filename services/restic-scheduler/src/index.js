@@ -6,6 +6,7 @@ import { mkdir, readFile, writeFile } from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import client from 'prom-client';
+import * as Sentry from '@sentry/node';
 
 const execAsync = promisify(exec);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -41,12 +42,23 @@ async function ensureStateDir() {
   await mkdir(stateDir, { recursive: true });
 }
 
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || 'development',
+    tracesSampleRate: Number(process.env.SENTRY_TRACES_SAMPLE_RATE || 0.1)
+  });
+}
+
 async function loadState() {
   await ensureStateDir();
   try {
     const raw = await readFile(stateFile, 'utf-8');
     return JSON.parse(raw);
   } catch (error) {
+    if (process.env.SENTRY_DSN && error.code !== 'ENOENT') {
+      Sentry.captureException(error);
+    }
     return {
       lastRun: null,
       lastSuccess: null,
@@ -117,12 +129,18 @@ async function runRestic(trigger = 'manual') {
     state.activeAlerts = (state.activeAlerts || 0) + 1;
     runCounter.inc({ result: 'failure', trigger });
     lastSuccessGauge.set({ status: 'failure' }, Date.now());
+    if (process.env.SENTRY_DSN) {
+      Sentry.captureException(error);
+    }
   }
   await saveState(state);
   return { status, state };
 }
 
 const app = express();
+if (process.env.SENTRY_DSN) {
+  app.use(Sentry.Handlers.requestHandler());
+}
 app.use(express.json());
 
 app.get('/status', async (_req, res) => {
@@ -143,8 +161,21 @@ app.get('/metrics', async (_req, res) => {
 cron.schedule(RESTIC_SCHEDULE, () => {
   runRestic('schedule').catch((error) => {
     console.error('[restic-scheduler] Scheduled run failed', error);
+    if (process.env.SENTRY_DSN) {
+      Sentry.captureException(error);
+    }
   });
 });
+
+if (process.env.SENTRY_DSN) {
+  app.use(Sentry.Handlers.errorHandler());
+  process.on('unhandledRejection', (error) => {
+    Sentry.captureException(error);
+  });
+  process.on('uncaughtException', (error) => {
+    Sentry.captureException(error);
+  });
+}
 
 app.listen(PORT, () => {
   console.log(`[restic-scheduler] Listening on :${PORT}`);

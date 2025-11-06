@@ -1,0 +1,105 @@
+version: "3.9"
+
+x-shared-env: &shared-env
+  TZ: "UTC"
+  LOG_LEVEL: "info"
+  PUBLIC_SCHEME: "${PUBLIC_SCHEME:-https}"
+  SENTRY_DSN: "${SENTRY_DSN:-}"
+  SENTRY_ENVIRONMENT: "${SENTRY_ENVIRONMENT:-production}"
+  SENTRY_TRACES_SAMPLE_RATE: "${SENTRY_TRACES_SAMPLE_RATE:-0.1}"
+
+services:
+  haproxy:
+    image: haproxy:2.9
+    container_name: mailiacreate-haproxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8404:8404"
+      - "8443:8443"
+      - "8444:8444"
+    volumes:
+      - ../config/haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    depends_on:
+      - caddy-primary
+      - caddy-secondary
+      - stalwart-primary
+      - stalwart-secondary
+
+  keepalived:
+    image: osixia/keepalived:2.0.20
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      KEEPALIVED_VIRTUAL_IPS: "${CLUSTER_VIP:-10.0.0.10}"
+      KEEPALIVED_INTERFACE: "${CLUSTER_INTERFACE:-eth0}"
+      KEEPALIVED_ROUTER_ID: "${CLUSTER_ROUTER_ID:-51}"
+      KEEPALIVED_PASSWORD: "${CLUSTER_VRRP_PASSWORD:-mailiacreate}"
+      KEEPALIVED_PRIORITY: "${CLUSTER_PRIORITY:-100}"
+      KEEPALIVED_UNICAST_PEERS: "${CLUSTER_PEERS:-10.0.0.11 10.0.0.12}"
+    cap_add:
+      - NET_ADMIN
+      - NET_BROADCAST
+      - NET_RAW
+
+  caddy-primary:
+    image: ghcr.io/mailiacreate/caddy:latest
+    restart: unless-stopped
+    environment:
+      <<: *shared-env
+    volumes:
+      - caddy-primary-data:/data
+      - caddy-primary-config:/config
+      - ../config/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+    networks:
+      - ha_internal
+
+  caddy-secondary:
+    image: ghcr.io/mailiacreate/caddy:latest
+    restart: unless-stopped
+    environment:
+      <<: *shared-env
+    volumes:
+      - caddy-secondary-data:/data
+      - caddy-secondary-config:/config
+      - ../config/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+    networks:
+      - ha_internal
+
+  stalwart-primary:
+    image: stalwartlabs/mail-server:latest
+    restart: unless-stopped
+    environment:
+      <<: *shared-env
+      STALWART_NODE_ID: node-a
+    volumes:
+      - stalwart-primary-data:/data
+      - ../config/stalwart/config.toml:/config/config.toml:ro
+    networks:
+      - ha_internal
+
+  stalwart-secondary:
+    image: stalwartlabs/mail-server:latest
+    restart: unless-stopped
+    environment:
+      <<: *shared-env
+      STALWART_NODE_ID: node-b
+      STALWART_JOIN_NODE: stalwart-primary:8080
+    volumes:
+      - stalwart-secondary-data:/data
+      - ../config/stalwart/config.toml:/config/config.toml:ro
+    networks:
+      - ha_internal
+
+volumes:
+  caddy-primary-data:
+  caddy-primary-config:
+  caddy-secondary-data:
+  caddy-secondary-config:
+  stalwart-primary-data:
+  stalwart-secondary-data:
+
+networks:
+  ha_internal:
+    driver: bridge
