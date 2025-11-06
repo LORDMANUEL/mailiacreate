@@ -11,13 +11,19 @@ export default function DomainsPage() {
   const { data, mutate } = useSWR('/admin/api/domains', fetcher);
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const domainPattern = /^[a-z0-9.-]+\.[a-z]{2,}$/i;
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!name) return;
+    if (!domainPattern.test(name)) {
+      setError('Dominio inválido. Usa formato ejemplo.com');
+      return;
+    }
     setLoading(true);
     await axios.post('/admin/api/domains', { name });
     setName('');
+    setError('');
     setLoading(false);
     mutate();
   };
@@ -34,17 +40,19 @@ export default function DomainsPage() {
         <input
           value={name}
           onChange={(event) => setName(event.target.value)}
+          onFocus={() => setError('')}
           placeholder="dominio.com"
           className="flex-1 rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
         />
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || !domainPattern.test(name)}
           className="rounded-md bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark disabled:opacity-60"
         >
           Añadir
         </button>
       </form>
+      {error && <p className="mt-2 text-sm text-red-300">{error}</p>}
       <div className="mt-6 overflow-hidden rounded-md border border-slate-800">
         <table className="min-w-full divide-y divide-slate-800 text-sm">
           <thead className="bg-slate-900/80 text-left text-xs uppercase tracking-wide text-slate-400">

@@ -33,6 +33,7 @@ MailiaCreate es una suite de colaboración y correo empresarial basada en Stalwa
 - **Seguridad por defecto:** TLS extremo a extremo, cabeceras endurecidas, integración DKIM/DMARC/SPF, controles RBAC, auditoría de accesos y exportaciones.
 - **Productividad:** webmail con interfaz de tres paneles, etiquetas, búsqueda avanzada; panel admin con gestión completa de dominios y usuarios; panel IT para métricas, logs y backups.
 - **Automatización:** instalador asistido, scripts de despliegue/backup/restore, send-router multi-canal con IA preventiva, scheduler Restic y reglas de alerta listas para usar.
+- **Ciclo CI/CD:** workflows GitHub Actions para linting, validación de Docker Compose y publicación de imágenes firmadas en GHCR.
 
 ---
 
@@ -129,6 +130,11 @@ Todos los servicios se entregan mediante contenedores Docker y comparten un arch
   ```
   - Consulta de entregas: `GET /api/jobs/<JOB_ID>`
   - Integración con IA (`SEND_ROUTER_AI_URL`) para rechazar envíos de riesgo.
+- **Validación sintética 24/7:**
+  ```bash
+  ./scripts/synthetic-checks.sh --host tu-dominio --skip-tls
+  ```
+  Ejecuta comprobaciones HTTP, IMAP/SMTP y vigila vencimiento de certificados.
 
 ---
 
@@ -152,8 +158,9 @@ Cada integración está descrita en los playbooks operativos y puede ampliarse c
 La **regresión final** documentada en [`docs/QA/REGRESION_FINAL.md`](docs/QA/REGRESION_FINAL.md) avala que el estado “Completado” es reproducible. Los hitos principales fueron:
 
 - ✅ Validaciones sintácticas `node --check` en `services/send-router`, `services/ai-orchestrator` y `services/restic-scheduler`.
-- ✅ Ejecución de `scripts/hardening-check.sh` para comprobar TLS, cabeceras de seguridad y credenciales por defecto.
+- ✅ Ejecución de `scripts/hardening-check.sh --ci` y `scripts/synthetic-checks.sh --help` para comprobar credenciales, cabeceras y disponibilidad de endpoints.
 - ⚠️ Intentos de `npm install` en los paneles Next.js anotados como advertencia: fallaron en el sandbox por bloqueo al registro npm, por lo que se recomienda repetirlos en entornos con salida a Internet tras clonar el proyecto.
+- 🛠️ Integración continua: `.github/workflows/ci.yml` valida dependencias, linting y `docker compose config`; `.github/workflows/release-images.yml` construye y firma imágenes para GHCR cuando se etiquetan releases.
 
 Además, cada fase del roadmap posee su bitácora de QA dedicada en [`docs/QA/`](docs/QA), cubriendo desde el despliegue base (Fase 0) hasta la automatización avanzada (Fase 6).
 
@@ -163,11 +170,11 @@ Además, cada fase del roadmap posee su bitácora de QA dedicada en [`docs/QA/`]
 
 Aun con el proyecto listo para producción, se sugieren iniciativas para profundizar la madurez operativa:
 
-1. **Publicación de imágenes firmadas:** automatizar pipelines CI para construir y publicar imágenes Docker firmadas (cosign) de los servicios Next.js y Node.
-2. **Sincronización de identidades:** integrar un conector SCIM/LDAP con Keycloak para onboarding/offboarding automático desde HRIS externos.
+1. **Imágenes multi-arquitectura:** extender el workflow de releases para publicar builds `linux/arm64` junto a `linux/amd64`.
+2. **Pipelines de builds reproducibles:** extender el workflow de CI para generar artefactos Next.js (`npm run build`) usando cachés de dependencias.
 3. **Pruebas de restore en CI:** agregar jobs programados que verifiquen la restauración de backups Restic en entornos efímeros.
-4. **Validaciones de formularios ampliadas:** endurecer la capa de UI en los paneles con validación adicional y mensajes contextualizados.
-5. **Monitorización sintética:** desplegar sondas HTTP/IMAP/JMAP periódicas para obtener métricas de experiencia de usuario y alertar degradaciones.
+4. **Automatización SCIM completa:** integrar la provisión automática HRIS → Keycloak → Stalwart aprovechando los hooks documentados.
+5. **Monitorización sintética avanzada:** programar `scripts/synthetic-checks.sh` en Cron y publicar resultados en Prometheus mediante exporters.
 
 Estos ítems no bloquean la salida a producción, pero ayudan a sostener un ciclo de mejora continua.
 

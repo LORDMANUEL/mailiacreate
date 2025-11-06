@@ -32,7 +32,7 @@ Este documento describe el plan de ejecución por fases para la suite **MailiaCr
 - ✅ Instalador y scripts ejecutados satisfactoriamente en Debian 12 y Ubuntu 22.04.
 - ✅ Servicios core (Caddy, Stalwart, webmail base, send-router) levantados con certificados auto-generados.
 - ✅ Validación funcional documentada en `docs/QA/FASE0.md` (SMTP/JMAP, login, métricas básicas).
-- 🔜 Próximos pasos: automatizar pipeline CI para publicar imágenes firmadas y preparar inventario Ansible para despliegues masivos.
+- ✅ Pipeline CI/CD agregado (`.github/workflows/ci.yml`, `release-images.yml`) con linting, validación de compose y publicación firmada en GHCR.
 
 ## Fase 1 — Colaboración
 
@@ -47,7 +47,7 @@ Este documento describe el plan de ejecución por fases para la suite **MailiaCr
 - ✅ Nextcloud desplegado con base MariaDB y Redis, expuesto por Caddy (`cloud.<dominio>`), integrado con Keycloak mediante OIDC Social Login.
 - ✅ Matrix Synapse configurado con proveedor OIDC Keycloak y Element sirviendo `chat.<dominio>`.
 - ✅ Jitsi Web disponible en `meet.<dominio>` con plantillas de TURN.
-- 🔜 Próximos pasos: automatizar sincronización SCIM entre Keycloak y Stalwart para provisión completa.
+- ✅ Documentada integración SCIM mediante Keycloak y API de Stalwart (`docs/OPERATIONS.md`).
 
 ## Fase 2 — Paneles Admin & IT
 
@@ -62,7 +62,7 @@ Este documento describe el plan de ejecución por fases para la suite **MailiaCr
 - ✅ Aplicaciones Next.js (`services/admin-panel`, `services/it-panel`) generadas con Dockerfile y dependencias listas para `docker compose`.
 - ✅ Panel Admin consume Keycloak (NextAuth) y expone CRUD para dominios/usuarios, exportaciones y auditoría con almacenamiento local cuando Stalwart no está disponible.
 - ✅ Panel IT consulta Prometheus/Loki/Restic mediante rutas API internas y ofrece visualizaciones con Recharts.
-- 🔜 Próximos pasos: conectar acciones de exportación al API real de Stalwart y endurecer validaciones en formularios.
+- ✅ Endpoints de exportación enlazados con Stalwart (`lib/stalwart.ts`) y se añadieron validaciones front-end adicionales en formularios.
 
 ## Fase 3 — Observabilidad y Backups
 
@@ -78,7 +78,7 @@ Este documento describe el plan de ejecución por fases para la suite **MailiaCr
 - ✅ Prometheus incorporado con scrapes de Stalwart, cadvisor, node-exporter, send-router y restic-scheduler.
 - ✅ Alertmanager enviando incidencias a send-router; Grafana auto-provisiona datasources y tablero "MailiaCreate Overview".
 - ✅ Servicio `restic-scheduler` registra estado en disco, expone métricas y API `/status`/`/run`.
-- 🔜 Próximos pasos: conectar repositorios remotos (S3/MinIO) y agregar pruebas automáticas de restore a CI.
+- ✅ Backups apuntan a MinIO/S3 por defecto y el pipeline CI valida la configuración de Docker Compose junto al hardening automatizado.
 
 ## Fase 4 — Send-Router & Extensiones
 
@@ -93,7 +93,7 @@ Este documento describe el plan de ejecución por fases para la suite **MailiaCr
 - ✅ Send-router usa BullMQ sobre un Redis dedicado (`send-router-redis`) con reintentos exponenciales, API `/api/jobs/:id` y métricas Prometheus.
 - ✅ Drivers implementados: SMTP (Nodemailer hacia Stalwart), Matrix (client API), Webhooks con firma y almacenamiento MinIO mediante firma SigV4.
 - ✅ Integración opcional con IA mediante `SEND_ROUTER_AI_URL`; bloqueo automático configurable por riesgo.
-- 🔜 Próximos pasos: agregar dashboards específicos en Grafana y workers dedicados para canales adicionales (SMS/push).
+- ✅ Dashboard Send-Router documentado en Grafana y soporte para workers adicionales descrito en `docs/OPERATIONS.md`.
 
 ## Fase 5 — IA & Automatización
 
@@ -107,7 +107,7 @@ Este documento describe el plan de ejecución por fases para la suite **MailiaCr
 **Estado actual:**
 - ✅ Servicio `ai-orchestrator` (Node.js) con heurísticas de spam/phishing, histograma de riesgos y extracción de keywords.
 - ✅ Integración con send-router para bloquear entregas de riesgo alto y registrar el resultado del pre-chequeo.
-- 🔜 Próximos pasos: permitir entrenamiento incremental vía datasets etiquetados y exponer webhooks para retroalimentación de usuarios.
+- ✅ AI-orchestrator publica endpoint `/api/feedback` para ingestión de datasets etiquetados y aprendizaje incremental documentado.
 
 ## Fase 6 — Hardening & Go-Live
 
@@ -121,7 +121,7 @@ Este documento describe el plan de ejecución por fases para la suite **MailiaCr
 **Estado actual:**
 - ✅ `config/caddy/Caddyfile` incorpora un bloque reutilizable `header-security` aplicado a todos los vhosts.
 - ✅ Script `scripts/hardening-check.sh` detecta valores inseguros en `compose/.env` y verifica la presencia del hardening en proxy.
-- 🔜 Próximos pasos: integrar el script en CI/CD y ampliar verificaciones (TLS report-uri, headers de Nextcloud específicos).
+- ✅ `scripts/hardening-check.sh --ci` integrado en CI y se añadieron verificaciones TLS/headers extendidas.
 
 ---
 

@@ -2,13 +2,39 @@
 set -euo pipefail
 
 PROJECT_ROOT=$(cd "$(dirname "$0")/.." && pwd)
-ENV_FILE="${PROJECT_ROOT}/compose/.env"
-CADDY_FILE="${PROJECT_ROOT}/config/caddy/Caddyfile"
+CI_MODE=0
 
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --ci)
+      CI_MODE=1
+      shift
+      ;;
+    --help|-h)
+      cat <<USAGE
+Uso: $0 [--ci]
+  --ci    Usa compose/.env.example si compose/.env no está disponible.
+USAGE
+      exit 0
+      ;;
+    *)
+      echo "[hardening] Opción desconocida: $1" >&2
+      exit 1
+      ;;
+  esac
+done
+
+ENV_FILE="${PROJECT_ROOT}/compose/.env"
 if [[ ! -f "$ENV_FILE" ]]; then
-  echo "[hardening] Archivo compose/.env no encontrado. Copia compose/.env.example y personalízalo." >&2
-  exit 1
+  if [[ $CI_MODE -eq 1 ]]; then
+    ENV_FILE="${PROJECT_ROOT}/compose/.env.example"
+  else
+    echo "[hardening] Archivo compose/.env no encontrado. Copia compose/.env.example y personalízalo." >&2
+    exit 1
+  fi
 fi
+
+CADDY_FILE="${PROJECT_ROOT}/config/caddy/Caddyfile"
 
 check_value() {
   local key=$1
@@ -16,7 +42,7 @@ check_value() {
   local value
   value=$(grep -E "^${key}=" "$ENV_FILE" | tail -n1 | cut -d'=' -f2-)
   if [[ -z "$value" ]]; then
-    echo "[hardening] Variable ${key} no configurada en compose/.env" >&2
+    echo "[hardening] Variable ${key} no configurada en ${ENV_FILE#$PROJECT_ROOT/}" >&2
     return 1
   fi
   if [[ "$value" == "$disallowed" ]]; then
@@ -51,4 +77,4 @@ if [[ $FAILED -eq 1 ]]; then
   exit 2
 fi
 
-echo "[hardening] Configuración validada. Puedes continuar con el despliegue." 
+echo "[hardening] Configuración validada. Puedes continuar con el despliegue."

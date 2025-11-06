@@ -1,6 +1,8 @@
 import express from 'express';
 import client from 'prom-client';
 import crypto from 'crypto';
+import { promises as fs } from 'fs';
+import path from 'path';
 
 const PORT = Number(process.env.PORT || 4100);
 const MAX_BODY = Number(process.env.AI_ORCHESTRATOR_MAX_BODY_KB || 2048) * 1024;
@@ -25,6 +27,26 @@ const stopWords = new Set(['the', 'a', 'an', 'and', 'or', 'of', 'in', 'on', 'for
 const app = express();
 app.use(express.json({ limit: MAX_BODY }));
 
+const DATA_DIR = process.env.AI_DATA_DIR || path.join(process.cwd(), 'data');
+const FEEDBACK_FILE = process.env.AI_FEEDBACK_FILE || path.join(DATA_DIR, 'feedback.json');
+const MAX_FEEDBACK = Number(process.env.AI_FEEDBACK_MAX_ITEMS || 500);
+let feedbackBuffer = [];
+
+async function bootstrapFeedbackStore() {
+  try {
+    await fs.mkdir(path.dirname(FEEDBACK_FILE), { recursive: true });
+    const existing = await fs.readFile(FEEDBACK_FILE, 'utf-8');
+    feedbackBuffer = JSON.parse(existing);
+  } catch (error) {
+    if (error.code !== 'ENOENT') {
+      console.warn('[ai-orchestrator] No se pudo cargar feedback existente:', error.message);
+    }
+    feedbackBuffer = [];
+  }
+}
+
+const feedbackReady = bootstrapFeedbackStore();
+
 const register = new client.Registry();
 client.collectDefaultMetrics({ register });
 
@@ -41,8 +63,15 @@ const riskHistogram = new client.Histogram({
   buckets: [0, 0.1, 0.25, 0.5, 0.75, 0.9, 1]
 });
 
+const feedbackCounter = new client.Counter({
+  name: 'ai_orchestrator_feedback_total',
+  help: 'Cantidad de muestras de feedback registradas',
+  labelNames: ['label']
+});
+
 register.registerMetric(classificationCounter);
 register.registerMetric(riskHistogram);
+register.registerMetric(feedbackCounter);
 
 function stripHtml(html = '') {
   return html.replace(/<[^>]*>/g, ' ');
@@ -197,6 +226,36 @@ app.post('/api/summarize', (req, res) => {
     console.error('[ai-orchestrator] summarize error', error.message);
     res.status(400).json({ error: 'Invalid payload' });
   }
+});
+
+app.post('/api/feedback', async (req, res) => {
+  await feedbackReady;
+  const payload = req.body || {};
+  const label = typeof payload.label === 'string' ? payload.label.trim() : '';
+  const messageId = typeof payload.messageId === 'string' ? payload.messageId.trim() : crypto.randomUUID();
+  if (!label) {
+    return res.status(400).json({ error: 'label is required' });
+  }
+  if (!['low', 'medium', 'high'].includes(label)) {
+    return res.status(400).json({ error: 'label must be low, medium or high' });
+  }
+  const notes = typeof payload.notes === 'string' ? payload.notes.trim() : '';
+  const sample = {
+    id: messageId,
+    label,
+    indicators: Array.isArray(payload.indicators) ? payload.indicators.slice(0, 10) : [],
+    submittedAt: new Date().toISOString(),
+    notes
+  };
+  feedbackBuffer = [sample, ...feedbackBuffer].slice(0, MAX_FEEDBACK);
+  try {
+    await fs.writeFile(FEEDBACK_FILE, JSON.stringify(feedbackBuffer, null, 2));
+  } catch (error) {
+    console.error('[ai-orchestrator] No se pudo persistir feedback', error.message);
+    return res.status(500).json({ error: 'Unable to persist feedback' });
+  }
+  feedbackCounter.inc({ label });
+  res.status(201).json(sample);
 });
 
 app.listen(PORT, () => {

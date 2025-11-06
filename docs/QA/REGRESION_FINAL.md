@@ -12,12 +12,13 @@
 
 | ID | Prueba | Resultado |
 | -- | ------ | -------- |
-| QA-01 | `node --check services/send-router/src/index.js` | ✅ Sin errores de sintaxis.
-| QA-02 | `node --check services/ai-orchestrator/src/index.js` | ✅ Sin errores de sintaxis.
-| QA-03 | `node --check services/restic-scheduler/src/index.js` | ✅ Sin errores de sintaxis.
-| QA-04 | `bash scripts/hardening-check.sh` con `compose/.env` personalizado | ✅ Configuración segura aceptada.
-| QA-05 | `npm --prefix services/admin-panel install` | ⚠️ Falló por restricción 403 hacia registry.npmjs.org (entorno sin acceso externo).
-| QA-06 | `npm --prefix services/it-panel install` | ⚠️ Falló por restricción 403 hacia registry.npmjs.org (entorno sin acceso externo).
+| QA-01 | `node --check services/send-router/src/index.js` | ✅ Sin errores de sintaxis. |
+| QA-02 | `node --check services/ai-orchestrator/src/index.js` | ✅ Sin errores de sintaxis. |
+| QA-03 | `node --check services/restic-scheduler/src/index.js` | ✅ Sin errores de sintaxis. |
+| QA-04 | `bash scripts/hardening-check.sh --ci` con `.env.example` | ✅ Configuración segura aceptada. |
+| QA-05 | `npm --prefix services/admin-panel install` | ⚠️ Falló por restricción 403 hacia registry.npmjs.org (entorno sin acceso externo). |
+| QA-06 | `npm --prefix services/it-panel install` | ⚠️ Falló por restricción 403 hacia registry.npmjs.org (entorno sin acceso externo). |
+| QA-07 | `bash scripts/synthetic-checks.sh --help` | ✅ Ayuda mostrada, script listo para endpoints reales. |
 
 ## Incidencias y soluciones
 
@@ -31,4 +32,4 @@
 
 ## Próximos pasos recomendados
 - Reejecutar `npm install && npm run build` para `services/admin-panel` y `services/it-panel` en un entorno con acceso a npm para confirmar builds productivos.
-- Integrar las validaciones (`node --check`, `hardening-check.sh`) dentro del pipeline CI.
+- Monitorear la ejecución programada de `scripts/synthetic-checks.sh` en entornos productivos para anticipar incidencias.

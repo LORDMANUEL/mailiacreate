@@ -50,6 +50,20 @@ Para activar almacenamiento externo, define `SEND_ROUTER_STORAGE=minio` y propor
 
 Si configuras `SEND_ROUTER_AI_URL`, cada mensaje pasa por `ai-orchestrator`; valores de riesgo superiores a `SEND_ROUTER_AI_THRESHOLD` pueden bloquear la entrega cuando `SEND_ROUTER_AI_ENFORCE=true`.
 
+### Retroalimentación de IA
+
+- Endpoint: `POST http://ai-orchestrator:4100/api/feedback`
+- Cuerpo esperado:
+  ```json
+  {
+    "messageId": "<uuid|Message-ID>",
+    "label": "low|medium|high",
+    "indicators": ["spam", "phishing"],
+    "notes": "Comentario opcional"
+  }
+  ```
+- Los registros se almacenan en `data/feedback.json` dentro del contenedor y alimentan la métrica `ai_orchestrator_feedback_total{label=...}` para ajustar umbrales.
+
 ## Mantenimiento
 
 - **Actualizar imágenes**: `docker compose -f compose/docker-compose.prod.yml pull && docker compose -f compose/docker-compose.prod.yml up -d`.
@@ -60,6 +74,18 @@ Si configuras `SEND_ROUTER_AI_URL`, cada mensaje pasa por `ai-orchestrator`; val
 - **Alertas**: Alertmanager reenvía eventos a `send-router` (`/api/hooks/alerts`). Ajusta integraciones adicionales según tus flujos.
 - **Agregar certificados personalizados**: monta directorio en servicio `caddy` con TLS manual.
 - **Escalado**: utiliza `docker compose up -d --scale webmail=2` y configura balanceo en Caddy.
+
+## Automatización CI/CD
+
+- `./scripts/hardening-check.sh --ci` y `./scripts/synthetic-checks.sh` se ejecutan en el workflow `.github/workflows/ci.yml`.
+- Las imágenes de `admin-panel`, `it-panel`, `send-router`, `ai-orchestrator` y `restic-scheduler` se construyen y firman desde `.github/workflows/release-images.yml` al publicar tags `v*.*.*` en GitHub.
+- Para despliegues masivos, integra estos workflows con tu inventario Ansible o plataforma GitOps consumiendo las imágenes firmadas publicadas en GHCR.
+
+## Sincronización de identidades
+
+- Usa Keycloak como autoridad central y habilita el conector SCIM: `Realm Settings > User Registration > SCIM`
+- Configura Stalwart con `ADMIN_API_TOKEN` y apunta el panel admin a `STALWART_ADMIN_API` para reflejar altas/bajas.
+- El flujo recomendado es: HRIS → Keycloak (SCIM) → Hook send-router → Stalwart (`POST /admin/users`).
 
 ## Hardening previo a producción
 
