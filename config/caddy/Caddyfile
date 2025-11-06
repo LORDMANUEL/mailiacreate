@@ -1,5 +1,5 @@
-{ 
-  email admin@example.com
+{
+  email {$ADMIN_EMAIL}
   acme_ca https://acme-v02.api.letsencrypt.org/directory
 }
 
@@ -14,7 +14,7 @@
   }
 }
 
-mail.example.com {
+{$MAIL_FQDN} {
   import header-security
   encode gzip
   tls {
@@ -38,32 +38,32 @@ mail.example.com {
   }
 }
 
-chat.example.com {
+{$CHAT_FQDN} {
   import header-security
   reverse_proxy element:80
 }
 
-matrix.example.com {
+{$MATRIX_FQDN} {
   import header-security
   reverse_proxy synapse:8008
 }
 
-sso.example.com {
+{$SSO_FQDN} {
   import header-security
   reverse_proxy keycloak:8080
 }
 
-meet.example.com {
+{$MEET_FQDN} {
   import header-security
   reverse_proxy jitsi-web:80
 }
 
-cloud.example.com {
+{$CLOUD_FQDN} {
   import header-security
   reverse_proxy nextcloud:80
 }
 
-grafana.example.com {
+{$GRAFANA_FQDN} {
   import header-security
   reverse_proxy grafana:3000
 }

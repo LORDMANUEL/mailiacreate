@@ -15,6 +15,15 @@ services:
       - ../config/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
       - caddy-config:/config
+    environment:
+      ADMIN_EMAIL: "${ADMIN_EMAIL}"
+      MAIL_FQDN: "${MAIL_FQDN}"
+      CHAT_FQDN: "${CHAT_FQDN}"
+      MATRIX_FQDN: "${MATRIX_FQDN}"
+      SSO_FQDN: "${SSO_FQDN}"
+      MEET_FQDN: "${MEET_FQDN}"
+      CLOUD_FQDN: "${CLOUD_FQDN}"
+      GRAFANA_FQDN: "${GRAFANA_FQDN}"
     depends_on:
       - stalwart
       - webmail
@@ -45,7 +54,7 @@ services:
     restart: unless-stopped
     environment:
       <<: *shared-env
-      JMAP_ENDPOINT: "https://mail.example.com/jmap"
+      JMAP_ENDPOINT: "https://${MAIL_FQDN}/jmap"
     depends_on:
       - stalwart
 
@@ -55,8 +64,8 @@ services:
     restart: unless-stopped
     environment:
       <<: *shared-env
-      NEXTAUTH_URL: "https://mail.example.com/admin"
-      KEYCLOAK_ISSUER: "https://sso.example.com/realms/${KEYCLOAK_REALM:-mailiacreate}"
+      NEXTAUTH_URL: "https://${MAIL_FQDN}/admin"
+      KEYCLOAK_ISSUER: "https://${SSO_FQDN}/realms/${KEYCLOAK_REALM:-mailiacreate}"
       KEYCLOAK_CLIENT_ID: "${KEYCLOAK_ADMIN_CLIENT_ID:-mail-suite-admin}"
       KEYCLOAK_CLIENT_SECRET: "${KEYCLOAK_ADMIN_CLIENT_SECRET:-change_me}"
       STALWART_ADMIN_URL: "http://stalwart:8080/admin"
@@ -72,8 +81,8 @@ services:
     restart: unless-stopped
     environment:
       <<: *shared-env
-      NEXTAUTH_URL: "https://mail.example.com/it"
-      KEYCLOAK_ISSUER: "https://sso.example.com/realms/${KEYCLOAK_REALM:-mailiacreate}"
+      NEXTAUTH_URL: "https://${MAIL_FQDN}/it"
+      KEYCLOAK_ISSUER: "https://${SSO_FQDN}/realms/${KEYCLOAK_REALM:-mailiacreate}"
       KEYCLOAK_CLIENT_ID: "${KEYCLOAK_IT_CLIENT_ID:-mail-suite-it}"
       KEYCLOAK_CLIENT_SECRET: "${KEYCLOAK_IT_CLIENT_SECRET:-change_me}"
       PROMETHEUS_URL: "http://prometheus:9090"
@@ -98,7 +107,7 @@ services:
       SEND_ROUTER_BACKOFF_MS: 5000
       SEND_ROUTER_SMTP_HOST: stalwart
       SEND_ROUTER_SMTP_PORT: 587
-      SEND_ROUTER_SMTP_FROM: "no-reply@mail.example.com"
+      SEND_ROUTER_SMTP_FROM: "no-reply@${MAIL_DOMAIN}"
       SEND_ROUTER_S3_ENDPOINT: "http://minio:9000"
       SEND_ROUTER_S3_BUCKET: "mailiacreate"
       SEND_ROUTER_S3_ACCESS_KEY: "${MINIO_ROOT_USER:-mailiacreate}"
@@ -154,7 +163,7 @@ services:
       KEYCLOAK_ADMIN_PASSWORD: change_me
       KC_PROXY: edge
       KC_DB: dev-file
-    command: ["start-dev", "--http-enabled", "true", "--hostname", "sso.example.com", "--http-port", "8080"]
+    command: ["start-dev", "--http-enabled", "true", "--hostname", "${SSO_FQDN}", "--http-port", "8080"]
     ports:
       - "8080:8080"
 
@@ -163,6 +172,7 @@ services:
     restart: unless-stopped
     environment:
       <<: *shared-env
+      GF_SERVER_ROOT_URL: "https://${GRAFANA_FQDN}"
     ports:
       - "3000:3000"
     volumes:
@@ -197,7 +207,7 @@ services:
     restart: unless-stopped
     environment:
       <<: *shared-env
-      DOMAIN: chat.example.com
+      DOMAIN: ${CHAT_FQDN}
     depends_on:
       - synapse
 
@@ -206,7 +216,7 @@ services:
     restart: unless-stopped
     environment:
       <<: *shared-env
-      SYNAPSE_SERVER_NAME: chat.example.com
+      SYNAPSE_SERVER_NAME: ${MATRIX_FQDN}
       SYNAPSE_REPORT_STATS: "no"
       SYNAPSE_CONFIG_PATH: /data/homeserver.yaml
       SYNAPSE_REGISTRATION_SHARED_SECRET: ${MATRIX_REGISTRATION_SHARED_SECRET:-supersecret}
@@ -222,7 +232,7 @@ services:
     restart: unless-stopped
     environment:
       <<: *shared-env
-      PUBLIC_URL: https://meet.example.com
+      PUBLIC_URL: https://${MEET_FQDN}
     ports:
       - "4443:4443"
       - "10000:10000/udp"
@@ -234,8 +244,8 @@ services:
       <<: *shared-env
       NEXTCLOUD_ADMIN_USER: ${NEXTCLOUD_ADMIN_USER:-admin}
       NEXTCLOUD_ADMIN_PASSWORD: ${NEXTCLOUD_ADMIN_PASSWORD:-change_me}
-      NEXTCLOUD_TRUSTED_DOMAINS: "cloud.example.com"
-      OVERWRITECLIURL: "https://cloud.example.com"
+      NEXTCLOUD_TRUSTED_DOMAINS: "${CLOUD_FQDN}"
+      OVERWRITECLIURL: "https://${CLOUD_FQDN}"
       OVERWRITEPROTOCOL: https
       MYSQL_HOST: nextcloud-db
       MYSQL_DATABASE: nextcloud

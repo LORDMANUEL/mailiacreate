@@ -60,8 +60,16 @@ Todos los servicios se entregan mediante contenedores Docker y comparten un arch
    export MAILIACREATE_REPO=https://github.com/<tu-organizacion>/mailiacreate.git
    curl -fsSL https://raw.githubusercontent.com/<tu-organizacion>/mailiacreate/main/scripts/install.sh | sudo bash
    ```
+   - Solicita los dominios clave (correo, SSO, chat, videollamadas, Nextcloud, Grafana) y actualiza automáticamente `.env`, Stalwart y Synapse para alinearlos con tu organización.
    - Valida el sistema, instala/recupera dependencias (Docker, Git, curl, gpg), corrige servicios detenidos y levanta el stack completo en `/opt/mailiacreate`.
-   - Incluye reintentos automáticos para `apt-get`, arranque asistido de Docker y reporte detallado de errores con sugerencias.
+   - Incluye reintentos automáticos para `apt-get`, arranque asistido de Docker, verificación de espacio y reporte detallado de errores con sugerencias.
+
+   **¿Qué deja listo el instalador?**
+
+   - Core de correo Stalwart configurado con tu dominio y certificados automáticos mediante Caddy.
+   - Webmail Next.js, paneles Admin/IT protegidos por Keycloak y send-router AI listos con URLs personalizadas.
+   - Suite colaborativa completa: Matrix/Element para chat, Jitsi para videollamadas, Nextcloud para archivos/vCards/CalDAV.
+   - Integración out-of-the-box de métricas, logs y backups, incluyendo credenciales y endpoints adaptados a tus FQDN.
 
 2. **Despliegue manual:**
    ```bash
@@ -116,6 +124,7 @@ La suite está pensada para que los servicios se potencien entre sí desde el pr
 - **Backups + Almacenamiento S3:** las copias restic programadas pueden replicarse en MinIO o en un endpoint S3 externo, y los paneles permiten consultar el historial y disparar restauraciones selectivas sobre los volúmenes críticos del core de correo y Nextcloud.
 - **Seguridad + Cumplimiento:** el script de hardening revisa cabeceras, políticas TLS y credenciales débiles; ante hallazgos, sugiere correcciones inmediatas y puede ejecutarse desde el panel IT para adjuntar evidencias en auditorías.
 - **Productividad + APIs:** el panel admin expone exportaciones de buzón y resultados de auditoría vía API, lo que permite integrarlo con herramientas de terceros (por ejemplo, automatizar onboarding/offboarding desde un sistema de RR.HH.).
+- **Firmas y branding consistente:** las preferencias del webmail (firmas, alias y respuestas rápidas) se sincronizan con las identidades configuradas en Stalwart, mientras que Nextcloud centraliza plantillas corporativas y vCards para arrastrar y usar en los correos.
 
 Cada integración está descrita en los playbooks operativos y puede ampliarse con drivers adicionales (webhooks, almacenamiento externo, nuevos canales del send-router) sin abandonar la experiencia “clonar y ejecutar”.
 

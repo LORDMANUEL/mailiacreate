@@ -27,6 +27,39 @@ handle_failure() {
 }
 trap 'handle_failure $LINENO' ERR
 
+prompt_with_default() {
+  local message="$1"
+  local default="$2"
+  local response
+  read -r -p "$message [$default]: " response || true
+  if [[ -z "$response" ]]; then
+    echo "$default"
+  else
+    echo "$response"
+  fi
+}
+
+set_env_var() {
+  local file="$1"
+  local key="$2"
+  local value="$3"
+  local escaped="${value//\\/\\\\}"
+  escaped="${escaped//&/\\&}"
+  escaped="${escaped//\//\\/}"
+  if grep -q "^${key}=" "$file"; then
+    sed -i "s|^${key}=.*|${key}=${escaped}|" "$file"
+  else
+    printf '%s=%s\n' "$key" "$value" >>"$file"
+  fi
+}
+
+update_file_pattern() {
+  local file="$1"
+  local pattern="$2"
+  local replacement="$3"
+  perl -0pi -e "s|$pattern|$replacement|gm" "$file"
+}
+
 if [[ $EUID -ne 0 ]]; then
   error "Ejecute el instalador con privilegios de administrador (sudo)."
   exit 1
@@ -132,6 +165,43 @@ else
   warn "Se mantiene configuración existente en compose/.env"
 fi
 
+ENV_FILE="compose/.env"
+source "$ENV_FILE"
+
+info "Configurando dominios y contactos"
+MAIL_DOMAIN_VALUE=$(prompt_with_default "Dominio principal de correo" "${MAIL_DOMAIN:-example.com}")
+MAIL_FQDN_VALUE=$(prompt_with_default "FQDN para webmail" "${MAIL_FQDN:-mail.${MAIL_DOMAIN_VALUE}}")
+SSO_FQDN_VALUE=$(prompt_with_default "FQDN para SSO" "${SSO_FQDN:-sso.${MAIL_DOMAIN_VALUE}}")
+CHAT_FQDN_VALUE=$(prompt_with_default "FQDN para Element/Chat" "${CHAT_FQDN:-chat.${MAIL_DOMAIN_VALUE}}")
+MATRIX_FQDN_VALUE=$(prompt_with_default "FQDN para Matrix Synapse" "${MATRIX_FQDN:-matrix.${MAIL_DOMAIN_VALUE}}")
+MEET_FQDN_VALUE=$(prompt_with_default "FQDN para Jitsi" "${MEET_FQDN:-meet.${MAIL_DOMAIN_VALUE}}")
+CLOUD_FQDN_VALUE=$(prompt_with_default "FQDN para Nextcloud" "${CLOUD_FQDN:-cloud.${MAIL_DOMAIN_VALUE}}")
+GRAFANA_FQDN_VALUE=$(prompt_with_default "FQDN para Grafana" "${GRAFANA_FQDN:-grafana.${MAIL_DOMAIN_VALUE}}")
+ADMIN_EMAIL_VALUE=$(prompt_with_default "Correo de contacto para certificados" "${ADMIN_EMAIL:-admin@${MAIL_DOMAIN_VALUE}}")
+
+set_env_var "$ENV_FILE" "MAIL_DOMAIN" "$MAIL_DOMAIN_VALUE"
+set_env_var "$ENV_FILE" "MAIL_FQDN" "$MAIL_FQDN_VALUE"
+set_env_var "$ENV_FILE" "SSO_FQDN" "$SSO_FQDN_VALUE"
+set_env_var "$ENV_FILE" "CHAT_FQDN" "$CHAT_FQDN_VALUE"
+set_env_var "$ENV_FILE" "MATRIX_FQDN" "$MATRIX_FQDN_VALUE"
+set_env_var "$ENV_FILE" "MEET_FQDN" "$MEET_FQDN_VALUE"
+set_env_var "$ENV_FILE" "CLOUD_FQDN" "$CLOUD_FQDN_VALUE"
+set_env_var "$ENV_FILE" "GRAFANA_FQDN" "$GRAFANA_FQDN_VALUE"
+set_env_var "$ENV_FILE" "ADMIN_EMAIL" "$ADMIN_EMAIL_VALUE"
+
+source "$ENV_FILE"
+
+info "Actualizando configuración de Stalwart y Matrix"
+update_file_pattern "config/stalwart/config.toml" 'hostname = "[^"]+"' "hostname = \"$MAIL_FQDN\""
+update_file_pattern "config/stalwart/config.toml" 'domain = "[^"]+"' "domain = \"$MAIL_DOMAIN\""
+update_file_pattern "config/synapse/homeserver.yaml" '^server_name: .*$' "server_name: $MATRIX_FQDN"
+update_file_pattern "config/synapse/homeserver.yaml" '^public_baseurl: .*$' "public_baseurl: https://$CHAT_FQDN/"
+update_file_pattern "config/synapse/homeserver.yaml" '- https://[^ ]*' "- https://$CHAT_FQDN"
+update_file_pattern "config/synapse/homeserver.yaml" 'issuer: https://[^ ]*/realms/[^ ]*' "issuer: https://$SSO_FQDN/realms/$KEYCLOAK_REALM"
+if [[ -n "${MATRIX_REGISTRATION_SHARED_SECRET:-}" ]]; then
+  update_file_pattern "config/synapse/homeserver.yaml" 'registration_shared_secret: "[^"]+"' "registration_shared_secret: \"$MATRIX_REGISTRATION_SHARED_SECRET\""
+fi
+
 info "Verificando espacio libre (mínimo 5GB recomendados)"
 AVAILABLE=$(df -Pm "$REPO_DIR" | awk 'NR==2 {print $4}')
 if (( AVAILABLE < 5120 )); then
@@ -142,6 +212,8 @@ info "Descargando imágenes de contenedores"
 if ! docker compose -f compose/docker-compose.prod.yml pull; then
   warn "No se pudieron pre-descargar todas las imágenes. Continuando con el despliegue; Docker las obtendrá al iniciar."
 fi
+
+chown -R "$USER_NAME:$USER_NAME" "$PROJECT_DIR"
 
 info "Levantando la plataforma"
 docker compose -f compose/docker-compose.prod.yml up -d
