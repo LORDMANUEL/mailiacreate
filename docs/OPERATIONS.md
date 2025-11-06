@@ -17,13 +17,12 @@
 - `SEND_ROUTER_WEBHOOK_TOKEN`: token compartido para asegurar webhooks salientes.
 - `SEND_ROUTER_SMTP_FROM`, `SEND_ROUTER_SMTP_HOST/PORT`: remitente y relay usados por send-router.
 - `SEND_ROUTER_AI_URL`, `SEND_ROUTER_AI_THRESHOLD`: controlan el análisis previo de IA.
+- `DEPLOYMENT_PROFILE`: perfil seleccionado por el instalador (`domain`, `internal_ip`, `public_ip`).
 
 ## Instalador
 
-- Variables disponibles:
-  - `MAILIACREATE_REPO`: URL git a clonar.
-  - `MAILIACREATE_HOME`: directorio destino (default `/opt/mailiacreate`).
-- Ejemplo: `MAILIACREATE_HOME=/srv/mailiacreate MAILIACREATE_REPO=https://github.com/<tu-organizacion>/mailiacreate.git sudo bash scripts/install.sh`.
+- Ejecuta `sudo ./scripts/install.sh` tras clonar el repositorio. El asistente instala Docker, clona en `/opt/mailiacreate/project`, solicita si usar IP interna, IP pública o dominios y completa el resto automáticamente.
+- Opcionalmente puedes definir `MAILIACREATE_HOME=/ruta/custom` antes de ejecutar el script para usar otra ubicación de instalación.
 
 ## Flujo posterior al despliegue
 

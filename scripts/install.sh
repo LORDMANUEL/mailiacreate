@@ -198,17 +198,53 @@ fi
 ENV_FILE="compose/.env"
 source "$ENV_FILE"
 
-LOCAL_MODE_DEFAULT=${LOCAL_MODE:-false}
-if prompt_yes_no "¿Deseas ejecutar en modo local (IP sin dominios)?" "$LOCAL_MODE_DEFAULT"; then
-  LOCAL_MODE_VALUE=true
+info "Selecciona el tipo de despliegue"
+echo "  1) IP interna (laboratorio sin TLS)"
+echo "  2) IP pública (sin dominios ni TLS automático)"
+echo "  3) Dominios (producción con TLS de Let's Encrypt)"
+
+DEPLOYMENT_CHOICE="${DEPLOYMENT_PROFILE:-}"
+while true; do
+  if [[ -z "$DEPLOYMENT_CHOICE" ]]; then
+    read -r -p "Opción [3]: " DEPLOYMENT_CHOICE || true
+  fi
+  case "${DEPLOYMENT_CHOICE:-3}" in
+    1|"internal"|"internal_ip"|"local")
+      DEPLOYMENT_CHOICE="internal"
+      LOCAL_MODE_VALUE=true
+      PROFILE_VALUE="internal_ip"
+      PROMPT_LABEL="interna"
+      break
+      ;;
+    2|"public"|"public_ip"|"ip")
+      DEPLOYMENT_CHOICE="public"
+      LOCAL_MODE_VALUE=true
+      PROFILE_VALUE="public_ip"
+      PROMPT_LABEL="pública"
+      break
+      ;;
+    3|"domain"|"dominio"|"")
+      DEPLOYMENT_CHOICE="domain"
+      LOCAL_MODE_VALUE=false
+      PROFILE_VALUE="domain"
+      PROMPT_LABEL=""
+      break
+      ;;
+    *)
+      warn "Opción inválida. Selecciona 1, 2 o 3."
+      DEPLOYMENT_CHOICE=""
+      ;;
+  esac
+done
+
+if [[ "$LOCAL_MODE_VALUE" == true ]]; then
   LOCAL_IP_SUGGESTED=$(hostname -I 2>/dev/null | awk '{print $1}' | tr -d '\n')
   if [[ -z "$LOCAL_IP_SUGGESTED" ]]; then
     LOCAL_IP_SUGGESTED="127.0.0.1"
   fi
-  LOCAL_IP_VALUE=$(prompt_with_default "Dirección IP del servidor (para acceso local)" "${LOCAL_IP:-$LOCAL_IP_SUGGESTED}")
+  LOCAL_IP_VALUE=$(prompt_with_default "Introduce la IP ${PROMPT_LABEL:-del servidor}" "${LOCAL_IP:-$LOCAL_IP_SUGGESTED}")
   PUBLIC_SCHEME_VALUE="http"
 else
-  LOCAL_MODE_VALUE=false
   LOCAL_IP_VALUE=""
   PUBLIC_SCHEME_VALUE="https"
 fi
@@ -216,48 +252,33 @@ fi
 set_env_var "$ENV_FILE" "LOCAL_MODE" "$LOCAL_MODE_VALUE"
 set_env_var "$ENV_FILE" "LOCAL_IP" "$LOCAL_IP_VALUE"
 set_env_var "$ENV_FILE" "PUBLIC_SCHEME" "$PUBLIC_SCHEME_VALUE"
+set_env_var "$ENV_FILE" "DEPLOYMENT_PROFILE" "$PROFILE_VALUE"
 
 source "$ENV_FILE"
 
-info "Configurando dominios y contactos"
-MAIL_DOMAIN_DEFAULT="${MAIL_DOMAIN:-example.com}"
+info "Configurando nombres de servicio"
 if [[ "$LOCAL_MODE" == "true" ]]; then
-  MAIL_DOMAIN_DEFAULT="${MAIL_DOMAIN:-mailiacreate.local}"
-fi
-MAIL_DOMAIN_VALUE=$(prompt_with_default "Dominio principal de correo" "$MAIL_DOMAIN_DEFAULT")
-
-if [[ "$LOCAL_MODE" == "true" ]]; then
-  MAIL_FQDN_DEFAULT="${MAIL_FQDN:-${LOCAL_IP:-127.0.0.1}:8080}"
-  SSO_FQDN_DEFAULT="${SSO_FQDN:-${LOCAL_IP:-127.0.0.1}:8081}"
-  CHAT_FQDN_DEFAULT="${CHAT_FQDN:-${LOCAL_IP:-127.0.0.1}:8082}"
-  MATRIX_FQDN_DEFAULT="${MATRIX_FQDN:-${LOCAL_IP:-127.0.0.1}:8083}"
-  MEET_FQDN_DEFAULT="${MEET_FQDN:-${LOCAL_IP:-127.0.0.1}:8084}"
-  CLOUD_FQDN_DEFAULT="${CLOUD_FQDN:-${LOCAL_IP:-127.0.0.1}:8085}"
-  GRAFANA_FQDN_DEFAULT="${GRAFANA_FQDN:-${LOCAL_IP:-127.0.0.1}:8086}"
+  MAIL_DOMAIN_VALUE="mailiacreate.local"
+  MAIL_FQDN_VALUE="${LOCAL_IP_VALUE}:8080"
+  SSO_FQDN_VALUE="${LOCAL_IP_VALUE}:8081"
+  CHAT_FQDN_VALUE="${LOCAL_IP_VALUE}:8082"
+  MATRIX_FQDN_VALUE="${LOCAL_IP_VALUE}:8083"
+  MEET_FQDN_VALUE="${LOCAL_IP_VALUE}:8084"
+  CLOUD_FQDN_VALUE="${LOCAL_IP_VALUE}:8085"
+  GRAFANA_FQDN_VALUE="${LOCAL_IP_VALUE}:8086"
+  ADMIN_EMAIL_VALUE="admin@${MAIL_DOMAIN_VALUE}"
 else
-  MAIL_FQDN_DEFAULT="${MAIL_FQDN:-mail.${MAIL_DOMAIN_VALUE}}"
-  SSO_FQDN_DEFAULT="${SSO_FQDN:-sso.${MAIL_DOMAIN_VALUE}}"
-  CHAT_FQDN_DEFAULT="${CHAT_FQDN:-chat.${MAIL_DOMAIN_VALUE}}"
-  MATRIX_FQDN_DEFAULT="${MATRIX_FQDN:-matrix.${MAIL_DOMAIN_VALUE}}"
-  MEET_FQDN_DEFAULT="${MEET_FQDN:-meet.${MAIL_DOMAIN_VALUE}}"
-  CLOUD_FQDN_DEFAULT="${CLOUD_FQDN:-cloud.${MAIL_DOMAIN_VALUE}}"
-  GRAFANA_FQDN_DEFAULT="${GRAFANA_FQDN:-grafana.${MAIL_DOMAIN_VALUE}}"
+  MAIL_DOMAIN_DEFAULT="${MAIL_DOMAIN:-example.com}"
+  MAIL_DOMAIN_VALUE=$(prompt_with_default "Dominio principal de correo" "$MAIL_DOMAIN_DEFAULT")
+  MAIL_FQDN_VALUE="mail.${MAIL_DOMAIN_VALUE}"
+  SSO_FQDN_VALUE="sso.${MAIL_DOMAIN_VALUE}"
+  CHAT_FQDN_VALUE="chat.${MAIL_DOMAIN_VALUE}"
+  MATRIX_FQDN_VALUE="matrix.${MAIL_DOMAIN_VALUE}"
+  MEET_FQDN_VALUE="meet.${MAIL_DOMAIN_VALUE}"
+  CLOUD_FQDN_VALUE="cloud.${MAIL_DOMAIN_VALUE}"
+  GRAFANA_FQDN_VALUE="grafana.${MAIL_DOMAIN_VALUE}"
+  ADMIN_EMAIL_VALUE="admin@${MAIL_DOMAIN_VALUE}"
 fi
-
-MAIL_FQDN_VALUE=$(prompt_with_default "Host de webmail" "$MAIL_FQDN_DEFAULT")
-SSO_FQDN_VALUE=$(prompt_with_default "Host para SSO" "$SSO_FQDN_DEFAULT")
-CHAT_FQDN_VALUE=$(prompt_with_default "Host para Element/Chat" "$CHAT_FQDN_DEFAULT")
-MATRIX_FQDN_VALUE=$(prompt_with_default "Host para Matrix Synapse" "$MATRIX_FQDN_DEFAULT")
-MEET_FQDN_VALUE=$(prompt_with_default "Host para Jitsi" "$MEET_FQDN_DEFAULT")
-CLOUD_FQDN_VALUE=$(prompt_with_default "Host para Nextcloud" "$CLOUD_FQDN_DEFAULT")
-GRAFANA_FQDN_VALUE=$(prompt_with_default "Host para Grafana" "$GRAFANA_FQDN_DEFAULT")
-
-if [[ "$LOCAL_MODE" == "true" ]]; then
-  ADMIN_EMAIL_DEFAULT="${ADMIN_EMAIL:-admin@${MAIL_DOMAIN_VALUE}}"
-else
-  ADMIN_EMAIL_DEFAULT="${ADMIN_EMAIL:-admin@${MAIL_DOMAIN_VALUE}}"
-fi
-ADMIN_EMAIL_VALUE=$(prompt_with_default "Correo de contacto para certificados" "$ADMIN_EMAIL_DEFAULT")
 
 set_env_var "$ENV_FILE" "MAIL_DOMAIN" "$MAIL_DOMAIN_VALUE"
 set_env_var "$ENV_FILE" "MAIL_FQDN" "$MAIL_FQDN_VALUE"
@@ -271,13 +292,32 @@ set_env_var "$ENV_FILE" "ADMIN_EMAIL" "$ADMIN_EMAIL_VALUE"
 
 source "$ENV_FILE"
 
+info "Resumen de configuración"
+if [[ "$LOCAL_MODE" == "true" ]]; then
+  info "  Tipo: ${PROFILE_VALUE//_/ }"
+  info "  IP: $LOCAL_IP"
+else
+  info "  Tipo: dominios"
+  info "  Dominio base: $MAIL_DOMAIN"
+fi
+info "  Webmail: $MAIL_FQDN"
+info "  SSO: $SSO_FQDN"
+info "  Chat: $CHAT_FQDN"
+info "  Jitsi: $MEET_FQDN"
+info "  Nextcloud: $CLOUD_FQDN"
+info "  Grafana: $GRAFANA_FQDN"
+
 MAIL_HOST_ONLY=$(strip_port "$MAIL_FQDN")
 MATRIX_HOST_ONLY=$(strip_port "$MATRIX_FQDN")
+MATRIX_SERVER_NAME="$MATRIX_HOST_ONLY"
+if [[ "$LOCAL_MODE" == "true" ]]; then
+  MATRIX_SERVER_NAME="matrix.$MAIL_DOMAIN"
+fi
 
 info "Actualizando configuración de Stalwart y Matrix"
 update_file_pattern "config/stalwart/config.toml" 'hostname = "[^"]+"' "hostname = \"$MAIL_HOST_ONLY\""
 update_file_pattern "config/stalwart/config.toml" 'domain = "[^"]+"' "domain = \"$MAIL_DOMAIN\""
-update_file_pattern "config/synapse/homeserver.yaml" '^server_name: .*$' "server_name: $MATRIX_HOST_ONLY"
+update_file_pattern "config/synapse/homeserver.yaml" '^server_name: .*$' "server_name: $MATRIX_SERVER_NAME"
 update_file_pattern "config/synapse/homeserver.yaml" '^public_baseurl: .*$' "public_baseurl: ${PUBLIC_SCHEME}://$CHAT_FQDN/"
 update_file_pattern "config/synapse/homeserver.yaml" '    - https?://[^ ]*' "    - ${PUBLIC_SCHEME}://$CHAT_FQDN"
 update_file_pattern "config/synapse/homeserver.yaml" 'issuer: https?://[^ ]*/realms/[^ ]*' "issuer: ${PUBLIC_SCHEME}://$SSO_FQDN/realms/$KEYCLOAK_REALM"
@@ -310,9 +350,10 @@ info "Verificando estado de los servicios"
 docker compose "${COMPOSE_ARGS[@]}" ps
 
 if [[ "$LOCAL_MODE" == "true" ]]; then
-  success "Instalación completada en modo local. Accede vía http://${MAIL_FQDN}/"
+  success "Instalación completada en modo IP (${PROFILE_VALUE//_/ }). Accede vía http://${MAIL_FQDN}/"
   info "Servicios clave: Webmail ${MAIL_FQDN}, SSO ${SSO_FQDN}, Chat ${CHAT_FQDN}, Nextcloud ${CLOUD_FQDN}, Grafana ${GRAFANA_FQDN}."
 else
   success "Instalación completada. Accede vía https://${MAIL_FQDN}/"
+  info "Servicios clave: Webmail ${MAIL_FQDN}, SSO ${SSO_FQDN}, Chat ${CHAT_FQDN}, Nextcloud ${CLOUD_FQDN}, Grafana ${GRAFANA_FQDN}."
 fi
 info "Ejecuta ./scripts/hardening-check.sh tras personalizar compose/.env para validar seguridad."

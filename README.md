@@ -81,14 +81,20 @@ cd mailiacreate
 sudo ./scripts/install.sh
 ```
 
-El instalador pregunta por tus dominios (o IP si eliges modo local), instala Docker + dependencias, prepara `compose/.env`, sincroniza configuraciones de Stalwart/Synapse y levanta todo el stack vía Docker Compose.
+El instalador únicamente te solicita:
+
+1. Elegir si desplegarás con **IP interna**, **IP pública** o **dominios**.
+2. Indicar la IP o el dominio base según la opción anterior.
+
+Con esa información instala Docker y dependencias, prepara `compose/.env`, actualiza las configuraciones de Stalwart/Synapse y levanta todo el stack automáticamente.
 
 **Modalidades disponibles**
 
 | Modo | Cuándo usarlo | Resultado |
 |------|----------------|-----------|
-| **Producción (dominios y TLS)** | Servidores con DNS público y certificados de Let's Encrypt | Caddy gestiona HTTPS automático en `https://mail.<dominio>`, `https://chat.<dominio>`, etc. |
-| **Local (solo IP/puerto)** | Pruebas en laboratorio o VM sin DNS | El instalador solicita la IP, ajusta URLs a `http://<ip>:puerto` y aplica un docker-compose override con Caddy en puertos 8080-8086. |
+| **Dominios (producción con TLS)** | Servidores con DNS público apuntando a la máquina | Caddy obtiene certificados Let's Encrypt y expone los servicios en `https://mail.<dominio>`, `https://chat.<dominio>`, etc. |
+| **IP pública** | Pruebas rápidas en una máquina expuesta por IP sin DNS configurado | El instalador ajusta la IP indicada, habilita HTTP plano en `http://<ip>:8080-8086` y aplica el override local correspondiente. |
+| **IP interna** | Laboratorios privados, VMs o equipos sin salida directa | Igual que el modo IP pública, pensado para redes internas o NAT. |
 
 **Servicios listos tras la instalación**
 
@@ -116,7 +122,7 @@ El script detecta si `compose/.env` tiene `LOCAL_MODE=true` para decidir si apli
 - Nextcloud: `https://cloud.<dominio>`
 - Grafana: `https://grafana.<dominio>`
 
-**Modo local (solo IP):**
+**Modo IP (interna o pública):**
 - Webmail + paneles + JMAP: `http://<ip>:8080`
 - Keycloak SSO: `http://<ip>:8081`
 - Element (chat): `http://<ip>:8082`
@@ -124,6 +130,7 @@ El script detecta si `compose/.env` tiene `LOCAL_MODE=true` para decidir si apli
 - Jitsi: `http://<ip>:8084`
 - Nextcloud: `http://<ip>:8085`
 - Grafana: `http://<ip>:8086`
+- El dominio de correo se inicializa como `mailiacreate.local`; puedes modificarlo en `compose/.env` si prefieres otro valor para pruebas.
 
 > Ajusta credenciales en `compose/.env` antes de exponer en producción. Después del despliegue ejecuta `./scripts/hardening-check.sh` para validar seguridad básica.
 
