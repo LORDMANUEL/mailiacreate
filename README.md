@@ -1,226 +1,164 @@
 # MailiaCreate Platform
 
-> **Estado del proyecto:** ✅ _Completado_ — listo para clonar y desplegar en entornos Debian o Ubuntu con soporte oficial mediante Docker Compose.
+[![Project Status](https://img.shields.io/badge/status-completed-success)](#estado-del-proyecto)
+[![Target OS](https://img.shields.io/badge/OS-Debian%20%7C%20Ubuntu-blue)](#despliegue-en-una-linea)
+[![Automation](https://img.shields.io/badge/Automation-installer%20%7C%20ci%2Fcd-orange)](#qa-y-confiabilidad)
 
-MailiaCreate es una suite de colaboración y correo empresarial basada en Stalwart Mail que entrega webmail estilo Gmail, paneles de administración y operaciones, chat Matrix, videollamadas Jitsi, almacenamiento compatible con S3 y automatización de backups en un único repositorio.
+MailiaCreate es una plataforma de correo y colaboración empresarial lista para producción. Provee un correo basado en **Stalwart Mail** con webmail estilo Gmail, paneles administrativos, chat Matrix, videollamadas Jitsi, Nextcloud, automatización de backups y observabilidad integral en un único repositorio pensado para clonarse y desplegarse en minutos.
+
+---
+
+## Índice rápido
+
+1. [Estado del proyecto](#estado-del-proyecto)
+2. [Visión y misión](#visión-y-misión)
+3. [Resumen ejecutivo](#resumen-ejecutivo)
+4. [Lo que obtienes](#lo-que-obtienes)
+5. [Despliegue en una línea](#despliegue-en-una-línea)
+6. [Topología de servicios](#topología-de-servicios)
+7. [Operaciones esenciales](#operaciones-esenciales)
+8. [QA y confiabilidad](#qa-y-confiabilidad)
+9. [Mejoras continuas recomendadas](#mejoras-continuas-recomendadas)
+10. [Documentación complementaria](#documentación-complementaria)
+
+---
+
+## Estado del proyecto
+
+| Estado | Última regresión | Compatibilidad | Stack validado |
+|--------|-----------------|----------------|----------------|
+| ✅ **Completado** | [`docs/QA/REGRESION_FINAL.md`](docs/QA/REGRESION_FINAL.md) | Debian 12 · Ubuntu 22.04 (Docker/Compose) | Producción con TLS o laboratorio por IP |
+
+> El repositorio está preparado para un flujo **clonar → ejecutar instalador → operar**. Todos los servicios cuentan con imágenes y configuración por defecto.
 
 ---
 
 ## Visión y misión
 
-- **Visión:** proporcionar una experiencia de mensajería y colaboración moderna, segura y extensible, comparable a suites comerciales, pero sustentada en tecnología abierta escrita en Rust y desplegable en infraestructura propia.
-- **Misión:** ofrecer una implementación lista para producción que pueda clonarse, instalarse y operar sin fricciones, incorporando automatización, observabilidad, cumplimiento y herramientas de productividad en un solo stack.
-
----
-
-## Tabla de contenido
-
-1. [Resumen ejecutivo](#resumen-ejecutivo)
-2. [Resumen funcional](#resumen-funcional)
-3. [Arquitectura y servicios](#arquitectura-y-servicios)
-4. [Puesta en marcha rápida](#puesta-en-marcha-rápida)
-5. [Operaciones clave](#operaciones-clave)
-6. [Funcionalidades combinadas](#funcionalidades-combinadas)
-7. [Resultados de QA](#resultados-de-qa)
-8. [Mejoras recomendadas](#mejoras-recomendadas)
-9. [Documentación adicional](#documentación-adicional)
+- **Visión:** entregar una experiencia de mensajería y colaboración moderna, segura y extensible, comparable a suites SaaS líderes, pero impulsada por software abierto escrito en Rust y desplegable en infraestructura propia.
+- **Misión:** simplificar la puesta en marcha de una suite empresarial completa, empaquetando identidad, correo, chat, videollamadas, automatización y observabilidad en un stack que se instala y gestiona con scripts reproducibles.
 
 ---
 
 ## Resumen ejecutivo
 
-- **Stack principal:** Stalwart Mail (JMAP/IMAP/SMTP) + Next.js (webmail, panel admin, panel IT) + Keycloak (SSO) + Matrix/Element + Jitsi + Nextcloud + MinIO + suite de observabilidad (Prometheus, Grafana, Loki, Alertmanager) + automatización de backups Restic.
-- **Seguridad por defecto:** TLS extremo a extremo, cabeceras endurecidas, integración DKIM/DMARC/SPF, controles RBAC, auditoría de accesos y exportaciones.
-- **Productividad:** webmail con interfaz de tres paneles, etiquetas, búsqueda avanzada; panel admin con gestión completa de dominios y usuarios; panel IT para métricas, logs y backups.
-- **Automatización:** instalador asistido, scripts de despliegue/backup/restore, send-router multi-canal con IA preventiva, scheduler Restic y reglas de alerta listas para usar.
-- **Ciclo CI/CD:** workflows GitHub Actions para linting, validación de Docker Compose y publicación de imágenes firmadas en GHCR.
-- **Identidad & observabilidad:** bridge SCIM que provisiona usuarios HRIS → Keycloak → Stalwart y exporter sintético con métricas Prometheus para validar servicios externos.
+- **Core de correo:** Stalwart Mail (JMAP/IMAP/SMTP/CalDAV/CardDAV) con dominios, alias, firmas y filtros antispam activos.
+- **Experiencia de usuario:** webmail Next.js tipo Gmail, panel admin para dominios/usuarios/exportaciones y panel IT para métricas, logs y backups.
+- **Colaboración:** Matrix/Element, Jitsi, Nextcloud y MinIO integrados con SSO Keycloak.
+- **Automatización:** instalador guiado, send-router multi-canal con IA preventiva, scheduler Restic, bridge SCIM y exporter de monitoreo sintético.
+- **Observabilidad y seguridad:** Prometheus, Grafana, Loki, Alertmanager, verificaciones de hardening, cabeceras TLS endurecidas y auditoría completa.
+- **CI/CD:** workflows que validan dependencias, construyen artefactos Next.js, publican imágenes multi-arquitectura y ejercitan restauraciones Restic programadas.
 
 ---
 
-## Resumen funcional
+## Lo que obtienes
 
-MailiaCreate orquesta un entorno colaborativo completo para organizaciones que desean operar su propia plataforma de correo y productividad sin depender de SaaS privativos. El despliegue base incluye:
+### Funcionalidad principal
 
-- **Correo empresarial completo:** dominio propio servido por Stalwart Mail con protocolos modernos, filtros anti-spam integrados y soporte de firmas y alias múltiples.
-- **Webmail estilo Gmail:** interfaz Next.js responsiva con bandejas, etiquetas, búsqueda avanzada, arrastre de adjuntos y gestión de firmas centralizada.
-- **Comunicación en tiempo real:** chat corporativo mediante Matrix/Element, videoconferencias con Jitsi y rooms accesibles desde el webmail y los paneles.
-- **Colaboración documental:** Nextcloud para archivos, calendarios CalDAV y contactos/vCards sincronizados con clientes móviles y de escritorio.
-- **Automatización y extensibilidad:** send-router con colas, IA preventiva y drivers para email, Matrix, webhooks y almacenamiento S3, además de APIs administrativas documentadas.
-- **Identidad centralizada:** servicio SCIM bridge que sincroniza altas/bajas de RR.HH. con Keycloak y Stalwart, garantizando que paneles, Matrix y correo mantengan el mismo ciclo de vida.
-- **Operación y cumplimiento:** paneles Admin e IT protegidos por Keycloak, auditoría completa, backups Restic programables y observabilidad centralizada con Prometheus/Grafana/Loki.
+- **Correo empresarial** con soporte DKIM/DMARC/SPF, inboxes compartidos, alias ilimitados y cuotas configurables.
+- **Webmail estilo Gmail** con tres paneles, búsqueda avanzada, etiquetas, favoritos, respuestas rápidas, subida arrastrando archivos y gestor de firmas centralizado.
+- **Panel administrativo** protegido por Keycloak para crear/bloquear usuarios, manejar dominios, exportar buzones y revisar auditorías.
+- **Panel IT** con tableros de salud, métricas Prometheus, logs Loki, programación de backups y verificación sintética.
+- **Chat y videoconferencias** vía Matrix/Element y Jitsi, enlazados desde el webmail y autenticados con SSO.
+- **Colaboración documental** con Nextcloud, vCards y calendarios CalDAV/CardDAV sincronizables con clientes móviles.
+- **Automatización multi-canal** mediante send-router (email, Matrix, webhooks, S3) enriquecido con IA de riesgo y colas BullMQ/Redis.
+- **Identidad automatizada** gracias a un bridge SCIM que consume eventos HRIS para alinear Keycloak y Stalwart.
+- **Monitoreo sintético** continuo con exportador Prometheus y alertas listas para ejecutar.
 
-Todo el stack está pensado para ser clonado, instalado y puesto en marcha en cuestión de minutos sobre Debian o Ubuntu, quedando listo para uso productivo.
+### Experiencia “clonar y ejecutar”
 
----
-
-## Arquitectura y servicios
-
-El archivo [`compose/docker-compose.prod.yml`](compose/docker-compose.prod.yml) describe un despliegue listo para producción, organizado en los siguientes dominios funcionales:
-
-| Dominio | Servicios principales | Descripción |
-|---------|----------------------|-------------|
-| **Proxy & SSO** | `caddy`, `keycloak` | Proxy TLS automático con Let\'s Encrypt, autenticación centralizada OIDC. |
-| **Correo & Webmail** | `stalwart`, `webmail` | Core de correo en Rust con protocolos modernos, cliente JMAP estilo Gmail. |
-| **Administración** | `admin-panel` | Next.js protegido por Keycloak para CRUD de dominios/usuarios y exportaciones asíncronas. |
-| **Operaciones** | `it-panel`, `grafana`, `prometheus`, `loki`, `promtail`, `alertmanager`, `cadvisor`, `node-exporter` | Monitoreo, alertas, trazabilidad y tableros listos. |
-| **Colaboración** | `synapse`, `element`, `jitsi-web`, `nextcloud`, `nextcloud-db`, `redis` | Chat Matrix con Element Web, videollamadas Jitsi y suite Nextcloud para archivos y calendarios. |
-| **Automatización & Almacenamiento** | `send-router`, `send-router-redis`, `ai-orchestrator`, `minio`, `restic-scheduler` | Enrutamiento multi-canal con IA, almacenamiento S3 y orquestación de backups Restic. |
-
-Todos los servicios se entregan mediante contenedores Docker y comparten un archivo `.env` parametrizable (`compose/.env`).
+1. `git clone <repo>`
+2. `cd mailiacreate`
+3. `sudo ./scripts/install.sh`
+4. Selecciona **IP interna**, **IP pública** o **dominio** y proporciona el valor solicitado.
+5. El instalador hace el resto: instala Docker, genera `.env`, ajusta configuraciones, levanta los servicios y muestra el resumen de URLs.
 
 ---
 
-## Puesta en marcha rápida
-
-- Diseñado para que «clonar y ejecutar» sea suficiente en servidores Debian 12 o Ubuntu 22.04+ con privilegios `sudo`.
-
-### 1. Instalación automática (recomendada)
+## Despliegue en una línea
 
 ```bash
-git clone https://github.com/mailiacreate/mailiacreate.git
+git clone <repo>
 cd mailiacreate
 sudo ./scripts/install.sh
 ```
 
-El instalador únicamente te solicita:
+El instalador admite tres modalidades:
 
-1. Elegir si desplegarás con **IP interna**, **IP pública** o **dominios**.
-2. Indicar la IP o el dominio base según la opción anterior.
+| Modo | Escenario | Servicios expuestos |
+|------|-----------|---------------------|
+| **Dominio** | Producción con certificados Let’s Encrypt | `https://mail.<dominio>` (webmail/paneles), `https://chat.<dominio>`, `https://meet.<dominio>`, `https://cloud.<dominio>`, `https://grafana.<dominio>`, endpoints SMTP/IMAP seguros. |
+| **IP pública** | Pruebas rápidas en servidores sin DNS configurado | Webmail, paneles, Matrix, Jitsi, Nextcloud y Grafana en puertos `8080-8086` usando HTTP. |
+| **IP interna** | Laboratorios, VMs sin salida directa, entornos de QA | Mismas URLs que el modo IP pública, optimizadas para redes privadas/NAT. |
 
-Con esa información instala Docker y dependencias, prepara `compose/.env`, actualiza las configuraciones de Stalwart/Synapse y levanta todo el stack automáticamente.
-
-**Modalidades disponibles**
-
-| Modo | Cuándo usarlo | Resultado |
-|------|----------------|-----------|
-| **Dominios (producción con TLS)** | Servidores con DNS público apuntando a la máquina | Caddy obtiene certificados Let's Encrypt y expone los servicios en `https://mail.<dominio>`, `https://chat.<dominio>`, etc. |
-| **IP pública** | Pruebas rápidas en una máquina expuesta por IP sin DNS configurado | El instalador ajusta la IP indicada, habilita HTTP plano en `http://<ip>:8080-8086` y aplica el override local correspondiente. |
-| **IP interna** | Laboratorios privados, VMs o equipos sin salida directa | Igual que el modo IP pública, pensado para redes internas o NAT. |
-
-**Servicios listos tras la instalación**
-
-- Core de correo Stalwart con tu dominio y protocolos Submission/IMAPS expuestos.
-- Webmail estilo Gmail, paneles Admin/IT con SSO, send-router con IA preventiva y automatización de backups Restic.
-- Suite colaborativa: Matrix/Element, Jitsi Meet, Nextcloud (archivos/vCards/CalDAV) y almacenamiento MinIO.
-- Identidad automatizada: bridge SCIM accesible en `https://mail.<dominio>/scim` para sincronizar Keycloak ↔ Stalwart.
-- Observabilidad integrada: Prometheus, Grafana, Loki, exporter sintético y alertas preconfiguradas.
-
-### 2. Despliegue manual
+Para reinstalar o actualizar sin asistente interactivo:
 
 ```bash
-git clone https://github.com/mailiacreate/mailiacreate.git
-cd mailiacreate
-cp compose/.env.example compose/.env
+cp compose/.env.example compose/.env   # si necesitas personalizar manualmente
 sudo ./scripts/deploy.sh
 ```
 
-El script detecta si `compose/.env` tiene `LOCAL_MODE=true` para decidir si aplica el override `docker-compose.local.yml`.
+---
 
-### 3. Accesos iniciales
+## Topología de servicios
 
-**Modo producción (dominios):**
-- Webmail & paneles: `https://mail.<dominio>/`
-- Chat (Element): `https://chat.<dominio>`
-- Nextcloud: `https://cloud.<dominio>`
-- Grafana: `https://grafana.<dominio>`
+| Dominio funcional | Servicios Docker | Descripción |
+|-------------------|------------------|-------------|
+| Proxy & SSO | `caddy`, `keycloak`, `postgres-keycloak` | Proxy TLS automático, autenticación OIDC y portales protegidos. |
+| Correo & Webmail | `stalwart`, `webmail` | Core de correo en Rust con cliente web Next.js estilo Gmail. |
+| Administración | `admin-panel` | Gestión de dominios, usuarios, exportaciones y auditorías. |
+| Operaciones | `it-panel`, `grafana`, `prometheus`, `alertmanager`, `loki`, `promtail`, `cadvisor`, `node-exporter`, `synthetic-exporter` | Observabilidad completa, alertas y monitoreo sintético. |
+| Colaboración | `synapse`, `element`, `jitsi-web`, `jitsi-prosody`, `jitsi-jvb`, `nextcloud`, `nextcloud-db`, `redis` | Chat Matrix/Element, videollamadas Jitsi y suite Nextcloud. |
+| Automatización | `send-router`, `send-router-redis`, `ai-orchestrator`, `restic-scheduler`, `scim-bridge`, `minio` | Enrutamiento multi-canal, IA preventiva, backups Restic, automatización SCIM y almacenamiento S3. |
 
-**Modo IP (interna o pública):**
-- Webmail + paneles + JMAP: `http://<ip>:8080`
-- Keycloak SSO: `http://<ip>:8081`
-- Element (chat): `http://<ip>:8082`
-- Matrix Synapse (API): `http://<ip>:8083`
-- Jitsi: `http://<ip>:8084`
-- Nextcloud: `http://<ip>:8085`
-- Grafana: `http://<ip>:8086`
-- El dominio de correo se inicializa como `mailiacreate.local`; puedes modificarlo en `compose/.env` si prefieres otro valor para pruebas.
-
-> Ajusta credenciales en `compose/.env` antes de exponer en producción. Después del despliegue ejecuta `./scripts/hardening-check.sh` para validar seguridad básica.
+Todos los servicios están definidos en [`compose/docker-compose.prod.yml`](compose/docker-compose.prod.yml) y pueden ejecutarse en modo laboratorio mediante el override [`compose/docker-compose.local.yml`](compose/docker-compose.local.yml).
 
 ---
 
-## Operaciones clave
+## Operaciones esenciales
 
-- **Backups & Restore:**
-  ```bash
-  ./scripts/backup.sh               # genera snapshots de volúmenes
-  ./scripts/restore.sh backups/ID   # restaura un snapshot específico
-  ```
-- **Verificación de hardening:**
-  ```bash
-  ./scripts/hardening-check.sh
-  ```
-- **Send Router API:**
-  ```bash
-  curl -X POST https://mail.example.com/api/send \
-    -H "Authorization: Bearer <token>" \
-    -F channel=webhook \
-    -F to=https://webhook.site/xxxx \
-    -F text="Hola mundo"
-  ```
-  - Consulta de entregas: `GET /api/jobs/<JOB_ID>`
-  - Integración con IA (`SEND_ROUTER_AI_URL`) para rechazar envíos de riesgo.
-- **Validación sintética 24/7:**
-  ```bash
-  ./scripts/synthetic-checks.sh --host tu-dominio --skip-tls
-  ```
-  Ejecuta comprobaciones HTTP, IMAP/SMTP y vigila vencimiento de certificados.
+```bash
+./scripts/hardening-check.sh          # Verifica TLS, credenciales y cabeceras
+./scripts/synthetic-checks.sh --help  # Pruebas de salud programables (JSON/Prometheus)
+./scripts/backup.sh                   # Snapshot Restic de volúmenes críticos
+./scripts/restore.sh backups/<ID>     # Restauración de un snapshot
+```
+
+- **Send Router API**: `POST /api/send` (email, Matrix, webhook, S3) con seguimiento por `GET /api/jobs/<id>`.
+- **Bridge SCIM**: `POST /scim/Users` para sincronizar usuarios HRIS → Keycloak → Stalwart.
+- **Panel IT**: dashboards de latencia SMTP/JMAP, consumo de cuotas, estado de backups y alertas integradas.
 
 ---
 
-## Funcionalidades combinadas
+## QA y confiabilidad
 
-La suite está pensada para que los servicios se potencien entre sí desde el primer arranque. Algunas combinaciones clave:
+- 🧪 **Regresión final:** disponible en [`docs/QA/REGRESION_FINAL.md`](docs/QA/REGRESION_FINAL.md). Incluye validaciones `node --check`, scripts de hardening y sintéticos, más el resumen de incidencias resueltas.
+- 🔁 **Workflows CI/CD:** `.github/workflows/ci.yml` ejecuta linting, dependencia y `docker compose config`; `.github/workflows/release-images.yml` construye imágenes multi-arquitectura firmadas; `.github/workflows/restore-check.yml` ensaya backups/restore en entornos efímeros.
+- ⚠️ **Advertencia registrada:** las instalaciones `npm install` de los paneles Next.js fallaron en el sandbox por bloqueo al registro npm. En entornos reales se recomienda ejecutar `npm install && npm run build` en `services/admin-panel` y `services/it-panel` tras clonar.
 
-- **Correo + Colaboración en vivo:** los usuarios pueden pasar de un hilo de correo en el webmail a una sala de Matrix o a una videollamada Jitsi con un solo clic desde los enlaces contextuales configurados en el panel admin, manteniendo la autenticación centralizada mediante Keycloak.
-- **Automatización + Observabilidad:** cada envío gestionado por `send-router` genera métricas y logs estructurados que se visualizan automáticamente en Grafana, con alertas preconfiguradas en Prometheus para detectar picos de error, saturación de colas o bloqueos de IA.
-- **Backups + Almacenamiento S3:** las copias restic programadas pueden replicarse en MinIO o en un endpoint S3 externo, y los paneles permiten consultar el historial y disparar restauraciones selectivas sobre los volúmenes críticos del core de correo y Nextcloud.
-- **Seguridad + Cumplimiento:** el script de hardening revisa cabeceras, políticas TLS y credenciales débiles; ante hallazgos, sugiere correcciones inmediatas y puede ejecutarse desde el panel IT para adjuntar evidencias en auditorías.
-- **Productividad + APIs:** el panel admin expone exportaciones de buzón y resultados de auditoría vía API, lo que permite integrarlo con herramientas de terceros (por ejemplo, automatizar onboarding/offboarding desde un sistema de RR.HH.).
-- **Firmas y branding consistente:** las preferencias del webmail (firmas, alias y respuestas rápidas) se sincronizan con las identidades configuradas en Stalwart, mientras que Nextcloud centraliza plantillas corporativas y vCards para arrastrar y usar en los correos.
-
-Cada integración está descrita en los playbooks operativos y puede ampliarse con drivers adicionales (webhooks, almacenamiento externo, nuevos canales del send-router) sin abandonar la experiencia “clonar y ejecutar”.
+Cada fase del roadmap cuenta con su propio informe QA (`docs/QA/FASE*.md`), lo que facilita trazar la evolución funcional y las pruebas asociadas.
 
 ---
 
-## Resultados de QA
+## Mejoras continuas recomendadas
 
-La **regresión final** documentada en [`docs/QA/REGRESION_FINAL.md`](docs/QA/REGRESION_FINAL.md) avala que el estado “Completado” es reproducible. Los hitos principales fueron:
+El proyecto está listo para producción, pero se documentan iniciativas para seguir madurando la operación:
 
-- ✅ Validaciones sintácticas `node --check` en `services/send-router`, `services/ai-orchestrator` y `services/restic-scheduler`.
-- ✅ Ejecución de `scripts/hardening-check.sh --ci` y `scripts/synthetic-checks.sh --help` para comprobar credenciales, cabeceras y disponibilidad de endpoints.
-- ⚠️ Intentos de `npm install` en los paneles Next.js anotados como advertencia: fallaron en el sandbox por bloqueo al registro npm, por lo que se recomienda repetirlos en entornos con salida a Internet tras clonar el proyecto.
-- 🛠️ Integración continua: `.github/workflows/ci.yml` valida dependencias, linting y `docker compose config`; `.github/workflows/release-images.yml` construye y firma imágenes para GHCR cuando se etiquetan releases.
-- 🔁 Nuevos flujos automáticos: `restore-check.yml` ejecuta pruebas programadas de backup/restore y la CI programada compila artefactos Next.js aprovechando cachés de dependencias.
-
-Además, cada fase del roadmap posee su bitácora de QA dedicada en [`docs/QA/`](docs/QA), cubriendo desde el despliegue base (Fase 0) hasta la automatización avanzada (Fase 6).
-
----
-
-## Mejoras recomendadas
-
-Aun con el proyecto listo para producción, se sugieren iniciativas para profundizar la madurez operativa:
-
-1. **Experiencia Gmail++:** consolidar el rediseño visual, dark mode y add-ons modulares descritos en el blueprint de mejoras.
-2. **Automatización no-code:** empaquetar flujos n8n prediseñados que conecten webmail, Matrix y send-router con sistemas externos.
-3. **Observabilidad con SLOs:** extender el exporter sintético con escenarios regionales y dashboards de fiabilidad por servicio.
-4. **HA multi-inquilino:** avanzar hacia despliegues activos-activos, replicación y marketplace de integraciones empresariales.
-5. **Gobierno de identidades:** completar autoservicio, ciclo de vida de grupos y sincronización SCIM avanzada.
-
-Estos ítems no bloquean la salida a producción, pero ayudan a sostener un ciclo de mejora continua.
+1. **Imágenes multi-arquitectura avanzadas:** ampliar la matriz actual para publicar variantes `linux/arm64/v8` optimizadas y pruebas de smoke en runners ARM.
+2. **Builds reproducibles Next.js:** consolidar cachés y pipelines para `npm run build` en CI con firmas de artefactos.
+3. **Pruebas de restore en CI ampliadas:** programar cargas multi-tenant y validaciones de integridad posteriores al restore.
+4. **Automatización SCIM extendida:** incorporar aprovisionamiento completo HRIS → Keycloak → Stalwart con workflows de desactivación y grupos sincronizados.
+5. **Monitorización sintética enriquecida:** exponer resultados de `scripts/synthetic-checks.sh` en paneles Grafana y cron programado, incluyendo tiempos de correo extremo a extremo.
+6. **Evolución UX:** seguir el [blueprint de mejoras](docs/BLUEPRINT_MEJORAS.md) para un webmail modular estilo Gmail+, con integraciones nativas a n8n, IA contextual, chat embebido y calendario embebido en la UI.
 
 ---
 
-## Documentación adicional
+## Documentación complementaria
 
-- **Plan de desarrollo por fases:** [`docs/DESARROLLO_PLAN.md`](docs/DESARROLLO_PLAN.md)
-- **Blueprint de mejoras:** [`docs/BLUEPRINT_MEJORAS.md`](docs/BLUEPRINT_MEJORAS.md)
-- **Playbook operativo:** [`docs/OPERATIONS.md`](docs/OPERATIONS.md)
-- **Evidencias de QA por fase:** [`docs/QA/`](docs/QA)
-- **Configuración de servicios:**
-  - Caddy: [`config/caddy/Caddyfile`](config/caddy/Caddyfile)
-  - Prometheus: [`config/prometheus/`](config/prometheus)
-  - Grafana: [`config/grafana/`](config/grafana)
-  - Stalwart Mail: [`config/stalwart/config.toml`](config/stalwart/config.toml)
-  - Matrix Synapse: [`config/synapse/`](config/synapse)
+- [`docs/DESARROLLO_PLAN.md`](docs/DESARROLLO_PLAN.md): fases, entregables y estado histórico del proyecto.
+- [`docs/BLUEPRINT_MEJORAS.md`](docs/BLUEPRINT_MEJORAS.md): hoja de ruta visual y funcional para futuras iteraciones (webmail avanzado, integraciones n8n, IA, etc.).
+- [`docs/OPERATIONS.md`](docs/OPERATIONS.md): procedimientos diarios, rotación de claves, troubleshooting y guías de auditoría.
+- [`docs/QA/`](docs/QA): bitácoras de pruebas por fase y regresión final.
+
+> Con MailiaCreate tienes un servidor de correo y colaboración moderno, autoalojado y extensible. Clona, ejecuta el instalador y empieza a operar.
 
