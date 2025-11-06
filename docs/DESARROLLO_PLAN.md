@@ -4,6 +4,8 @@ Este documento describe el plan de ejecución por fases para la suite **MailiaCr
 
 ## Resumen de estado
 
+> **Todo el backlog faseado se encuentra completado.** Se ejecutó una regresión final (ver `docs/QA/REGRESION_FINAL.md`) para validar servicios, scripts y dependencias.
+
 | Fase | Nombre | Objetivo principal | Estado | Comentarios |
 | --- | --- | --- | --- | --- |
 | 0 | Fundamentos | Provisionar infraestructura base, credenciales y automatización de despliegue. | ✅ Completada | Validación en entorno limpio con scripts e instalador ejecutados; resultados documentados en informe de QA. |
