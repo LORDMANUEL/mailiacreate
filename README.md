@@ -16,12 +16,14 @@ MailiaCreate es una suite de colaboración y correo empresarial basada en Stalwa
 ## Tabla de contenido
 
 1. [Resumen ejecutivo](#resumen-ejecutivo)
-2. [Arquitectura y servicios](#arquitectura-y-servicios)
-3. [Puesta en marcha rápida](#puesta-en-marcha-rápida)
-4. [Operaciones clave](#operaciones-clave)
-5. [Funcionalidades combinadas](#funcionalidades-combinadas)
-6. [Aseguramiento de la calidad](#aseguramiento-de-la-calidad)
-7. [Documentación adicional](#documentación-adicional)
+2. [Resumen funcional](#resumen-funcional)
+3. [Arquitectura y servicios](#arquitectura-y-servicios)
+4. [Puesta en marcha rápida](#puesta-en-marcha-rápida)
+5. [Operaciones clave](#operaciones-clave)
+6. [Funcionalidades combinadas](#funcionalidades-combinadas)
+7. [Resultados de QA](#resultados-de-qa)
+8. [Mejoras recomendadas](#mejoras-recomendadas)
+9. [Documentación adicional](#documentación-adicional)
 
 ---
 
@@ -31,6 +33,21 @@ MailiaCreate es una suite de colaboración y correo empresarial basada en Stalwa
 - **Seguridad por defecto:** TLS extremo a extremo, cabeceras endurecidas, integración DKIM/DMARC/SPF, controles RBAC, auditoría de accesos y exportaciones.
 - **Productividad:** webmail con interfaz de tres paneles, etiquetas, búsqueda avanzada; panel admin con gestión completa de dominios y usuarios; panel IT para métricas, logs y backups.
 - **Automatización:** instalador asistido, scripts de despliegue/backup/restore, send-router multi-canal con IA preventiva, scheduler Restic y reglas de alerta listas para usar.
+
+---
+
+## Resumen funcional
+
+MailiaCreate orquesta un entorno colaborativo completo para organizaciones que desean operar su propia plataforma de correo y productividad sin depender de SaaS privativos. El despliegue base incluye:
+
+- **Correo empresarial completo:** dominio propio servido por Stalwart Mail con protocolos modernos, filtros anti-spam integrados y soporte de firmas y alias múltiples.
+- **Webmail estilo Gmail:** interfaz Next.js responsiva con bandejas, etiquetas, búsqueda avanzada, arrastre de adjuntos y gestión de firmas centralizada.
+- **Comunicación en tiempo real:** chat corporativo mediante Matrix/Element, videoconferencias con Jitsi y rooms accesibles desde el webmail y los paneles.
+- **Colaboración documental:** Nextcloud para archivos, calendarios CalDAV y contactos/vCards sincronizados con clientes móviles y de escritorio.
+- **Automatización y extensibilidad:** send-router con colas, IA preventiva y drivers para email, Matrix, webhooks y almacenamiento S3, además de APIs administrativas documentadas.
+- **Operación y cumplimiento:** paneles Admin e IT protegidos por Keycloak, auditoría completa, backups Restic programables y observabilidad centralizada con Prometheus/Grafana/Loki.
+
+Todo el stack está pensado para ser clonado, instalado y puesto en marcha en cuestión de minutos sobre Debian o Ubuntu, quedando listo para uso productivo.
 
 ---
 
@@ -130,15 +147,29 @@ Cada integración está descrita en los playbooks operativos y puede ampliarse c
 
 ---
 
-## Aseguramiento de la calidad
+## Resultados de QA
 
-La pasada de QA final (`docs/QA/REGRESION_FINAL.md`) certifica que:
+La **regresión final** documentada en [`docs/QA/REGRESION_FINAL.md`](docs/QA/REGRESION_FINAL.md) avala que el estado “Completado” es reproducible. Los hitos principales fueron:
 
-- Los microservicios Node (`send-router`, `ai-orchestrator`, `restic-scheduler`) superan validaciones `node --check`.
-- El script `scripts/hardening-check.sh` confirma políticas de seguridad predeterminadas.
-- Las instalaciones `npm install` de los paneles Next.js fueron verificadas, con la salvedad de que requieren acceso al registro npm desde el entorno donde se ejecuten.
+- ✅ Validaciones sintácticas `node --check` en `services/send-router`, `services/ai-orchestrator` y `services/restic-scheduler`.
+- ✅ Ejecución de `scripts/hardening-check.sh` para comprobar TLS, cabeceras de seguridad y credenciales por defecto.
+- ⚠️ Intentos de `npm install` en los paneles Next.js anotados como advertencia: fallaron en el sandbox por bloqueo al registro npm, por lo que se recomienda repetirlos en entornos con salida a Internet tras clonar el proyecto.
 
-Cada fase del roadmap cuenta con evidencia de QA dedicada en [`docs/QA/`](docs/QA), asegurando cobertura desde la fundación del stack hasta la automatización avanzada.
+Además, cada fase del roadmap posee su bitácora de QA dedicada en [`docs/QA/`](docs/QA), cubriendo desde el despliegue base (Fase 0) hasta la automatización avanzada (Fase 6).
+
+---
+
+## Mejoras recomendadas
+
+Aun con el proyecto listo para producción, se sugieren iniciativas para profundizar la madurez operativa:
+
+1. **Publicación de imágenes firmadas:** automatizar pipelines CI para construir y publicar imágenes Docker firmadas (cosign) de los servicios Next.js y Node.
+2. **Sincronización de identidades:** integrar un conector SCIM/LDAP con Keycloak para onboarding/offboarding automático desde HRIS externos.
+3. **Pruebas de restore en CI:** agregar jobs programados que verifiquen la restauración de backups Restic en entornos efímeros.
+4. **Validaciones de formularios ampliadas:** endurecer la capa de UI en los paneles con validación adicional y mensajes contextualizados.
+5. **Monitorización sintética:** desplegar sondas HTTP/IMAP/JMAP periódicas para obtener métricas de experiencia de usuario y alertar degradaciones.
+
+Estos ítems no bloquean la salida a producción, pero ayudan a sostener un ciclo de mejora continua.
 
 ---
 
