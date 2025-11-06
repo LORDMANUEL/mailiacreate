@@ -1,0 +1,127 @@
+version: '3.8'
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+
+  stalwart:
+    image: stalwartlabs/stalwart-mail:latest
+    restart: unless-stopped
+    ports:
+      - "25:25"   # SMTP
+      - "465:465" # SMTPS
+      - "587:587" # Submission
+      - "993:993" # IMAPS
+    volumes:
+      - ./stalwart/config.toml:/etc/stalwart-mail/config.toml
+      - stalwart_data:/data
+
+  webmail:
+    build: ./src/webmail
+    restart: unless-stopped
+    expose:
+      - 3000
+
+  admin-panel:
+    build: ./src/admin-panel
+    restart: unless-stopped
+    expose:
+      - 3000
+
+  it-panel:
+    build: ./src/it-panel
+    restart: unless-stopped
+    expose:
+      - 3000
+
+  send-router:
+    build: ./src/send-router
+    restart: unless-stopped
+    expose:
+      - 3000
+
+  db:
+    image: mariadb
+    restart: unless-stopped
+    command: --transaction-isolation=READ-COMMITTED --binlog-format=ROW
+    volumes:
+      - db_data:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextcloud
+
+  nextcloud:
+    image: nextcloud
+    restart: unless-stopped
+    ports:
+      - 8081:80
+    volumes:
+      - nextcloud_data:/var/www/html
+    environment:
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextcloud
+      - MYSQL_HOST=db
+
+  synapse:
+    image: matrixdotorg/synapse:latest
+    restart: unless-stopped
+    volumes:
+      - synapse_data:/data
+
+  element:
+    image: vectorim/element-web:latest
+    restart: unless-stopped
+
+  loki:
+    image: grafana/loki:2.4.1
+    restart: unless-stopped
+    volumes:
+      - loki_data:/loki
+
+  promtail:
+    image: grafana/promtail:2.4.1
+    restart: unless-stopped
+    volumes:
+      - /var/log:/var/log
+      - ./promtail/config.yml:/etc/promtail/config.yml
+
+  grafana:
+    image: grafana/grafana:8.3.3
+    restart: unless-stopped
+    volumes:
+      - grafana_data:/var/lib/grafana
+
+  restic-cron:
+    image: restic/restic
+    restart: unless-stopped
+    command: sh -c "echo '0 0 * * * restic backup /data' | crontab - && crond -f"
+    environment:
+      - RESTIC_REPOSITORY=/backups
+      - RESTIC_PASSWORD=${RESTIC_PASSWORD}
+    volumes:
+      - ./backups:/backups
+      - restic_cache:/root/.cache/restic
+      - stalwart_data:/data
+
+volumes:
+  caddy_data:
+  caddy_config:
+  stalwart_data:
+  db_data:
+  nextcloud_data:
+  synapse_data:
+  loki_data:
+  promtail_config:
+  grafana_data:
+  restic_cache:

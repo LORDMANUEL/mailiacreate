@@ -1,0 +1,60 @@
+# Stalwart Mail Server configuration file.
+# See https://stalwart.at/docs/configuration for more information.
+
+[server]
+hostname = "mail.tudominio.com"
+
+[data]
+directory = "/data"
+
+[[session]]
+protocol = "jmap"
+port = 8080
+threads = 16
+
+  [session.tls]
+  port = 8443
+  key = "/data/tls/private.key"
+  cert = "/data/tls/certificate.crt"
+
+[[session]]
+protocol = "smtp"
+port = 25
+threads = 16
+
+  [session.tls]
+  port = 465
+  key = "/data/tls/private.key"
+  cert = "/data/tls/certificate.crt"
+
+  [session.auth.plain]
+  method = "plain"
+
+[[session]]
+protocol = "imap"
+port = 143
+threads = 16
+
+  [session.tls]
+  port = 993
+  key = "/data/tls/private.key"
+  cert = "/data/tls/certificate.crt"
+
+[[resolver]]
+name = "trusted"
+allow-domains = ["tudominio.com"]
+
+[[store]]
+name = "default"
+backend = "rocksdb"
+path = "/data/storage"
+
+[[blob]]
+name = "default"
+backend = "rocksdb"
+path = "/data/blob"
+
+[[lookup]]
+name = "default"
+backend = "rocksdb"
+path = "/data/lookup"

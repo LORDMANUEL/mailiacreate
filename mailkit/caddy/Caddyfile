@@ -1,0 +1,31 @@
+mail.tudominio.com {
+    reverse_proxy stalwart:8080
+}
+
+webmail.tudominio.com {
+    reverse_proxy webmail:3000
+}
+
+admin.tudominio.com {
+    reverse_proxy admin-panel:3000
+}
+
+it.tudominio.com {
+    reverse_proxy it-panel:3000
+}
+
+chat.tudominio.com {
+    reverse_proxy synapse:8008
+}
+
+element.tudominio.com {
+    reverse_proxy element:80
+}
+
+meet.tudominio.com {
+    reverse_proxy jitsi:80
+}
+
+cloud.tudominio.com {
+    reverse_proxy nextcloud:80
+}
