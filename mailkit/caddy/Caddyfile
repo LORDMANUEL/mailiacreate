@@ -18,6 +18,10 @@ api.tudominio.com {
     reverse_proxy mock-api:3001
 }
 
+router.tudominio.com {
+    reverse_proxy send-router:3000
+}
+
 chat.tudominio.com {
     reverse_proxy synapse:8008
 }
