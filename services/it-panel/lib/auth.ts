@@ -5,7 +5,7 @@ const issuer = process.env.KEYCLOAK_ISSUER || 'https://sso.example.com/realms/ma
 const clientId = process.env.KEYCLOAK_CLIENT_ID || 'mail-suite-it';
 const clientSecret = process.env.KEYCLOAK_CLIENT_SECRET || 'change_me';
 
-export const { auth, handlers } = NextAuth({
+const authSetup = NextAuth({
   session: { strategy: 'jwt' },
   providers: [
     Keycloak({
@@ -18,3 +18,7 @@ export const { auth, handlers } = NextAuth({
     signIn: '/(auth)/login'
   }
 });
+
+export const { handlers, auth } = authSetup;
+export const GET = handlers.GET;
+export const POST = handlers.POST;

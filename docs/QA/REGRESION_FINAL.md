@@ -38,6 +38,10 @@
    - *Impacto:* Los pipelines `npm install` de los tres frontends (admin, IT y webmail) fallaban al solicitar versiones `^1.1.x` que no existen en npm, rompiendo la verificación previa al build.
    - *Resolución:* Se reemplazó la integración por un cargador inline controlado por variables de entorno y se eliminó la dependencia del `package.json`, lo que estabiliza las instalaciones en entornos conectados.
 
+4. **Build Next.js bloqueado por configuración incompleta de Sentry.**
+   - *Impacto:* `npm run build` detenía la tubería con el error `No Sentry organization slug configured` y avisos por falta de `global-error.tsx`, debido a que el plugin intentaba subir sourcemaps sin credenciales y no existía un manejador global para capturar los fallos de React.
+   - *Resolución:* Se desactivó automáticamente el plugin de subida de sourcemaps cuando faltan `SENTRY_AUTH_TOKEN/SENTRY_ORG/SENTRY_PROJECT`, se añadieron handlers globales (`app/global-error.tsx`) y se inicializó la instrumentación Edge sólo cuando existen DSN configurados, dejando el build libre de fallos en entornos sin telemetría.
+
 ## Próximos pasos recomendados
 - Reejecutar `npm install && npm run build` para `services/admin-panel` y `services/it-panel` en un entorno con acceso a npm para confirmar builds productivos.
 - Monitorear la ejecución programada de `scripts/synthetic-checks.sh` (vía `synthetic-exporter`) y revisar los paneles de duración en Grafana para anticipar incidencias de roundtrip correo.
