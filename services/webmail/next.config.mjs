@@ -1,5 +1,5 @@
-await import('dotenv/config');
-const { withSentryConfig } = await import('@sentry/nextjs');
+import 'dotenv/config';
+import { withSentryConfig } from '@sentry/nextjs';
 
 const sentryUploadsEnabled = Boolean(
   process.env.SENTRY_AUTH_TOKEN &&
@@ -8,6 +8,7 @@ const sentryUploadsEnabled = Boolean(
 );
 
 const baseConfig = {
+  output: 'standalone',
   reactStrictMode: true,
   experimental: {
     typedRoutes: true
@@ -19,7 +20,12 @@ const baseConfig = {
     ]
   },
   env: {
-    NEXT_PUBLIC_APP_NAME: 'MailiaCreate Webmail'
+    NEXT_PUBLIC_APP_NAME: 'MailiaCreate Webmail',
+    NEXT_PUBLIC_MIXPANEL_TOKEN: process.env.NEXT_PUBLIC_MIXPANEL_TOKEN,
+    NEXT_PUBLIC_HOTJAR_SITE_ID: process.env.NEXT_PUBLIC_HOTJAR_SITE_ID,
+    NEXT_PUBLIC_HOTJAR_VERSION: process.env.NEXT_PUBLIC_HOTJAR_VERSION,
+    NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
+    NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE: process.env.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE
   }
 };
 

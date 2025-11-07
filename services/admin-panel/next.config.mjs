@@ -1,5 +1,5 @@
-await import('dotenv/config');
-const { withSentryConfig } = await import('@sentry/nextjs');
+import 'dotenv/config';
+import { withSentryConfig } from '@sentry/nextjs';
 
 const sentryUploadsEnabled = Boolean(
   process.env.SENTRY_AUTH_TOKEN &&
