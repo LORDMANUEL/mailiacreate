@@ -1,0 +1,40 @@
+{
+  "name": "webmail",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@headlessui/react": "^1.7.19",
+    "@hotjar/browser": "^1.1.12",
+    "@sentry/nextjs": "^7.103.0",
+    "@tailwindcss/forms": "^0.5.7",
+    "@tailwindcss/typography": "^0.5.10",
+    "axios": "^1.7.4",
+    "clsx": "^2.1.1",
+    "framer-motion": "^11.0.6",
+    "ical.js": "^1.5.0",
+    "lucide-react": "^0.441.0",
+    "mixpanel-browser": "^2.52.0",
+    "next": "14.2.5",
+    "next-auth": "^5.0.0-beta.9",
+    "next-themes": "^0.2.1",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "swr": "^2.2.5",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "20.14.10",
+    "@types/react": "18.3.3",
+    "@types/react-dom": "18.3.0",
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8.4.39",
+    "tailwindcss": "^3.4.4",
+    "typescript": "5.5.4"
+  }
+}

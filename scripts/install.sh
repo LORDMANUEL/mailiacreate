@@ -316,6 +316,34 @@ set_env_var "$ENV_FILE" "NEXT_PUBLIC_MIXPANEL_TOKEN" "$MIXPANEL_TOKEN_VALUE"
 set_env_var "$ENV_FILE" "NEXT_PUBLIC_HOTJAR_SITE_ID" "$HOTJAR_ID_VALUE"
 set_env_var "$ENV_FILE" "NEXT_PUBLIC_HOTJAR_VERSION" "$HOTJAR_VERSION_VALUE"
 
+info "Configurando colaboración en webmail"
+set_env_var "$ENV_FILE" "WEBMAIL_JMAP_BASE_URL" "http://stalwart:8080"
+set_env_var "$ENV_FILE" "WEBMAIL_JMAP_USERNAME" "admin"
+set_env_var "$ENV_FILE" "WEBMAIL_JMAP_PASSWORD" "change_me"
+
+DEFAULT_MATRIX_ROOM="${WEBMAIL_MATRIX_ROOM_ID:-}"
+DEFAULT_MATRIX_USER="${WEBMAIL_MATRIX_USER_ID:-}" 
+MATRIX_ROOM_VALUE=$(prompt_with_default "Matrix room ID para colaboración (por ejemplo !abcd:dominio)" "$DEFAULT_MATRIX_ROOM")
+MATRIX_USER_VALUE=$(prompt_with_default "Usuario Matrix para presencia (ej. @bot:dominio)" "$DEFAULT_MATRIX_USER")
+MATRIX_TOKEN_VALUE=$(prompt_with_default "Access token Matrix para el usuario anterior" "${WEBMAIL_MATRIX_ACCESS_TOKEN:-}")
+TEAM_IDS_VALUE=$(prompt_with_default "IDs Matrix a mostrar en la barra de presencia (separados por coma)" "${MATRIX_TEAM_IDS:-$MATRIX_USER_VALUE}")
+
+set_env_var "$ENV_FILE" "WEBMAIL_MATRIX_BASE_URL" "http://synapse:8008"
+set_env_var "$ENV_FILE" "WEBMAIL_MATRIX_ROOM_ID" "$MATRIX_ROOM_VALUE"
+set_env_var "$ENV_FILE" "WEBMAIL_MATRIX_USER_ID" "$MATRIX_USER_VALUE"
+set_env_var "$ENV_FILE" "WEBMAIL_MATRIX_ACCESS_TOKEN" "$MATRIX_TOKEN_VALUE"
+set_env_var "$ENV_FILE" "MATRIX_TEAM_IDS" "$TEAM_IDS_VALUE"
+
+NEXTCLOUD_CALDAV_VALUE=$(prompt_with_default "URL CalDAV/ICS a mostrar en el webmail (vacío para omitir)" "${WEBMAIL_NEXTCLOUD_CALDAV_URL:-}")
+NEXTCLOUD_TASKS_VALUE=$(prompt_with_default "URL Tasks/ICS para tareas (vacío para omitir)" "${WEBMAIL_NEXTCLOUD_TASKS_URL:-}")
+NEXTCLOUD_USER_VALUE=$(prompt_with_default "Usuario Nextcloud para extraer ICS (vacío si público)" "${WEBMAIL_NEXTCLOUD_USERNAME:-}")
+NEXTCLOUD_PASS_VALUE=$(prompt_with_default "Password Nextcloud ICS" "${WEBMAIL_NEXTCLOUD_PASSWORD:-}")
+
+set_env_var "$ENV_FILE" "WEBMAIL_NEXTCLOUD_CALDAV_URL" "$NEXTCLOUD_CALDAV_VALUE"
+set_env_var "$ENV_FILE" "WEBMAIL_NEXTCLOUD_TASKS_URL" "$NEXTCLOUD_TASKS_VALUE"
+set_env_var "$ENV_FILE" "WEBMAIL_NEXTCLOUD_USERNAME" "$NEXTCLOUD_USER_VALUE"
+set_env_var "$ENV_FILE" "WEBMAIL_NEXTCLOUD_PASSWORD" "$NEXTCLOUD_PASS_VALUE"
+
 source "$ENV_FILE"
 
 info "Resumen de configuración"

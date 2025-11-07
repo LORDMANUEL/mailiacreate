@@ -7,7 +7,10 @@
 - `KEYCLOAK_ADMIN`, `KEYCLOAK_ADMIN_PASSWORD`: credenciales iniciales SSO.
 - `KEYCLOAK_REALM`, `KEYCLOAK_CLIENT_ID`, `KEYCLOAK_CLIENT_SECRET`: realm y cliente usados por paneles/Matrix.
 - `KEYCLOAK_ADMIN_CLIENT_ID/SECRET`, `KEYCLOAK_IT_CLIENT_ID/SECRET`: clientes dedicados para paneles.
-- `JMAP_ENDPOINT`: URL pública del endpoint JMAP.
+- `WEBMAIL_JMAP_BASE_URL`, `WEBMAIL_JMAP_USERNAME`, `WEBMAIL_JMAP_PASSWORD`: credenciales usadas por el webmail para conectar con Stalwart vía JMAP.
+- `WEBMAIL_MATRIX_BASE_URL`, `WEBMAIL_MATRIX_ACCESS_TOKEN`, `WEBMAIL_MATRIX_ROOM_ID`, `WEBMAIL_MATRIX_USER_ID`: parámetros para presencia, chat embebido y firmas sincronizadas.
+- `WEBMAIL_NEXTCLOUD_CALDAV_URL`, `WEBMAIL_NEXTCLOUD_TASKS_URL`, `WEBMAIL_NEXTCLOUD_USERNAME`, `WEBMAIL_NEXTCLOUD_PASSWORD`: feeds ICS para eventos y tareas del panel lateral.
+- `MATRIX_TEAM_IDS`: lista de usuarios Matrix que aparecerán en la barra de presencia del webmail.
 - `NEXTCLOUD_ADMIN_USER`, `NEXTCLOUD_ADMIN_PASSWORD`: credenciales iniciales de Nextcloud.
 - `PROMETHEUS_BASIC_AUTH`: credenciales básicas si expones Prometheus.
 - `RESTIC_REPOSITORY`, `RESTIC_PASSWORD`: valores consumidos por el scheduler de backups.
@@ -28,8 +31,9 @@
 
 1. Accede a Keycloak (`https://sso.<dominio>`) y crea el *realm* definido en `.env`. Registra clientes `mail-suite-admin`, `mail-suite-it`, `webmail`, `matrix-synapse`, `nextcloud` con redirect URIs según dominios.
 2. Ingresa a Stalwart Admin (`https://mail.<dominio>/admin`) y crea dominios/usuarios base. El panel admin puede gestionar entidades adicionales.
-3. Configura Nextcloud (`https://cloud.<dominio>`) habilitando CardDAV/CalDAV y conectores OIDC (app `sociallogin`).
+3. Configura Nextcloud (`https://cloud.<dominio>`) habilitando CardDAV/CalDAV y conectores OIDC (app `sociallogin`). Exporta la agenda/tareas que quieras mostrar en el webmail y actualiza las URLs ICS (`WEBMAIL_NEXTCLOUD_CALDAV_URL`, `WEBMAIL_NEXTCLOUD_TASKS_URL`).
 4. Ajusta Matrix Synapse (`matrix.example.com/_matrix/client`) para validar redirecciones Keycloak y registra Element en `chat.<dominio>`.
+   - Genera un access token de servicio para el usuario Matrix que el webmail usará en presencia/chat y actualiza `.env` (`WEBMAIL_MATRIX_ACCESS_TOKEN`, `WEBMAIL_MATRIX_USER_ID`, `WEBMAIL_MATRIX_ROOM_ID`).
 5. Configura DNS (A/AAAA, MX, SRV, `_dmarc`, `_domainkey`, `matrix`, `autodiscover`, `autoconfig`).
 6. Grafana ya provisiona dashboards y datasources desde `config/grafana`. Revisa panel “MailiaCreate Overview” en `https://grafana.<dominio>`.
 7. Ejecuta `./scripts/backup.sh` y valida `./scripts/restore.sh <ruta>`. Puedes lanzar backups en caliente con `curl -X POST http://localhost:8000/run` dentro del contenedor `restic-scheduler`.

@@ -24,6 +24,7 @@ jobs:
           cache-dependency-path: |
             services/admin-panel/package*.json
             services/it-panel/package*.json
+            services/webmail/package*.json
 
       - name: Restore Next.js cache
         uses: actions/cache@v4
@@ -31,7 +32,8 @@ jobs:
           path: |
             services/admin-panel/.next/cache
             services/it-panel/.next/cache
-          key: ${{ runner.os }}-next-cache-${{ hashFiles('services/admin-panel/package-lock.json', 'services/it-panel/package-lock.json') }}
+            services/webmail/.next/cache
+          key: ${{ runner.os }}-next-cache-${{ hashFiles('services/admin-panel/package-lock.json', 'services/it-panel/package-lock.json', 'services/webmail/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-next-cache-
 
@@ -39,7 +41,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.npm
-          key: ${{ runner.os }}-npm-${{ hashFiles('services/admin-panel/package*.json', 'services/it-panel/package*.json') }}
+          key: ${{ runner.os }}-npm-${{ hashFiles('services/admin-panel/package*.json', 'services/it-panel/package*.json', 'services/webmail/package*.json') }}
           restore-keys: |
             ${{ runner.os }}-npm-
 
@@ -47,6 +49,7 @@ jobs:
         run: |
           npm install --prefix services/admin-panel --include=dev
           npm install --prefix services/it-panel --include=dev
+          npm install --prefix services/webmail --include=dev
 
       - name: Build Next.js artifacts
         env:
@@ -54,12 +57,14 @@ jobs:
         run: |
           npm run --prefix services/admin-panel build
           npm run --prefix services/it-panel build
+          npm run --prefix services/webmail build
 
       - name: Create reproducible archives
         run: |
           tar --sort=name --mtime='@0' --owner=0 --group=0 --numeric-owner -czf admin-panel-next.tar.gz -C services/admin-panel .next
           tar --sort=name --mtime='@0' --owner=0 --group=0 --numeric-owner -czf it-panel-next.tar.gz -C services/it-panel .next
-          sha256sum admin-panel-next.tar.gz it-panel-next.tar.gz > next-builds.sha256
+          tar --sort=name --mtime='@0' --owner=0 --group=0 --numeric-owner -czf webmail-next.tar.gz -C services/webmail .next
+          sha256sum admin-panel-next.tar.gz it-panel-next.tar.gz webmail-next.tar.gz > next-builds.sha256
 
       - name: Sign build artifacts
         env:
@@ -69,6 +74,7 @@ jobs:
           install -m 755 cosign /usr/local/bin/cosign
           cosign sign-blob --yes --output-signature admin-panel-next.tar.gz.sig admin-panel-next.tar.gz
           cosign sign-blob --yes --output-signature it-panel-next.tar.gz.sig it-panel-next.tar.gz
+          cosign sign-blob --yes --output-signature webmail-next.tar.gz.sig webmail-next.tar.gz
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -79,6 +85,8 @@ jobs:
             admin-panel-next.tar.gz.sig
             it-panel-next.tar.gz
             it-panel-next.tar.gz.sig
+            webmail-next.tar.gz
+            webmail-next.tar.gz.sig
             next-builds.sha256
           if-no-files-found: error
 
@@ -86,6 +94,7 @@ jobs:
         run: |
           npm run --prefix services/admin-panel lint
           npm run --prefix services/it-panel lint
+          npm run --prefix services/webmail lint
         continue-on-error: false
 
       - name: Verify Node microservices

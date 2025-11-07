@@ -56,7 +56,7 @@ MailiaCreate es una plataforma de correo y colaboración empresarial lista para 
 ### Funcionalidad principal
 
 - **Correo empresarial** con soporte DKIM/DMARC/SPF, inboxes compartidos, alias ilimitados y cuotas configurables.
-- **Webmail estilo Gmail** con tres paneles, búsqueda avanzada, etiquetas, favoritos, respuestas rápidas, subida arrastrando archivos y gestor de firmas centralizado.
+- **Webmail estilo Gmail** con tres paneles, búsqueda avanzada, etiquetas, favoritos, respuestas rápidas, subida arrastrando archivos y módulos anclables (chat Matrix, calendario/tareas CalDAV, co-redacción en tiempo real y firmas dinámicas sincronizadas).
 - **Panel administrativo** protegido por Keycloak para crear/bloquear usuarios, manejar dominios, exportar buzones y revisar auditorías.
 - **Panel IT** con tableros de salud, métricas Prometheus, logs Loki, programación de backups y verificación sintética.
 - **Chat y videoconferencias** vía Matrix/Element y Jitsi, enlazados desde el webmail y autenticados con SSO.

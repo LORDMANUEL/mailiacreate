@@ -42,6 +42,9 @@ jobs:
           - name: synthetic-exporter
             context: .
             dockerfile: services/synthetic-exporter/Dockerfile
+          - name: webmail
+            context: services/webmail
+            dockerfile: services/webmail/Dockerfile
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-qemu-action@v3
@@ -107,6 +110,7 @@ jobs:
           - restic-scheduler
           - scim-bridge
           - synthetic-exporter
+          - webmail
     steps:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3

@@ -48,6 +48,7 @@ Este documento describe el plan de ejecución por fases para la suite **MailiaCr
 - ✅ Matrix Synapse configurado con proveedor OIDC Keycloak y Element sirviendo `chat.<dominio>`.
 - ✅ Jitsi Web disponible en `meet.<dominio>` con plantillas de TURN.
 - ✅ Documentada integración SCIM mediante Keycloak y API de Stalwart (`docs/OPERATIONS.md`).
+- ✅ Webmail extendido con módulos anclables (chat Matrix, calendario/tareas CalDAV) y barra de presencia sincronizada.
 
 ## Fase 2 — Paneles Admin & IT
 
