@@ -32,6 +32,7 @@ services:
       - "993:993" # IMAPS
     volumes:
       - ./stalwart/config.toml:/etc/stalwart-mail/config.toml
+      - ./stalwart/config:/data/config
       - stalwart_data:/data
     networks:
       - mailkit_net

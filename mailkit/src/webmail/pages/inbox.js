@@ -1,14 +1,11 @@
 import { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
 import { getClient, getMailboxes, getEmails, getEmailContent } from '../lib/jmap';
 
-// WARNING: This is a placeholder for a real authentication flow.
-// In a real application, you would obtain a session and token from a secure,
-// server-side authentication process. The JMAP client would then be initialized
-// with that token, not with a raw username and password on the client-side.
-const USERNAME = 'user@tudominio.com'; // Placeholder
-const PASSWORD = 'password'; // Placeholder
+// Componente de la Bandeja de Entrada
+const InboxPage = () => {
+  const { data: session, status } = useSession({ required: true });
 
-export default function Inbox() {
   const [client, setClient] = useState(null);
   const [mailboxes, setMailboxes] = useState([]);
   const [emails, setEmails] = useState([]);
@@ -17,64 +14,104 @@ export default function Inbox() {
   const [emailBody, setEmailBody] = useState('');
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    // In a real app, this would be initialized after a secure login.
-    setError(
-      'Note: This is a UI proof-of-concept. The JMAP client is not securely authenticated. ' +
-      'A proper server-side authentication flow is required before this is functional.'
-    );
-    // const jmapClient = getClient(USERNAME, PASSWORD);
-    // setClient(jmapClient);
-  }, []);
+  // --- Inicialización y Lógica de Datos ---
 
-  // The following useEffect hooks are left as a reference for a functional implementation,
-  // but they will not run until the client is securely initialized.
   useEffect(() => {
-    const fetchInitialData = async () => {
-      if (client) {
-        // ... (code for fetching data)
-      }
-    };
-    fetchInitialData();
+    if (status === 'authenticated' && session.accessToken) {
+      // Inicializar el cliente JMAP con el token de acceso de Keycloak
+      const jmapClient = getClient(session.user.email, session.accessToken);
+      setClient(jmapClient);
+    }
+  }, [session, status]);
+
+  const fetchMailboxes = async () => {
+    if (!client) return;
+    try {
+      const fetchedMailboxes = await getMailboxes(client);
+      setMailboxes(fetchedMailboxes);
+      const inbox = fetchedMailboxes.find(m => m.role === 'inbox');
+      if (inbox) setSelectedMailbox(inbox);
+    } catch (err) {
+      setError('Failed to fetch mailboxes.');
+    }
+  };
+
+  const fetchEmails = async () => {
+    if (!client || !selectedMailbox) return;
+    try {
+      const fetchedEmails = await getEmails(client, selectedMailbox.id);
+      setEmails(fetchedEmails);
+    } catch (err) {
+      setError('Failed to fetch emails.');
+    }
+  };
+
+  useEffect(() => {
+    fetchMailboxes();
   }, [client]);
 
+  useEffect(() => {
+    fetchEmails();
+  }, [selectedMailbox]);
+
+  // --- Acciones del Usuario ---
+
+  const handleNewEmail = () => {
+    // Lógica para abrir un modal de composición de correo
+    alert('Función "Nuevo Correo" por implementar.');
+  };
+
+  const handleDeleteEmail = async () => {
+    if (!client || !selectedEmail) return;
+    if (confirm('Are you sure you want to delete this email?')) {
+      try {
+        // En JMAP, la eliminación es un cambio que mueve el correo a la papelera o lo destruye
+        await client.emails.set({
+          destroy: [selectedEmail.id],
+        });
+        alert('Email deleted successfully.');
+        fetchEmails(); // Refrescar la lista de correos
+      } catch (err) {
+        setError('Failed to delete email.');
+      }
+    }
+  };
+
+
+  if (status === 'loading') {
+    return <div>Loading session...</div>;
+  }
 
   return (
     <div className="flex h-screen font-sans text-gray-900 bg-gray-50">
-       {/* Error/Warning Display */}
-       {error && (
-        <div className="absolute top-0 left-0 right-0 p-2 text-center text-white bg-red-600">
-          {error}
-        </div>
-      )}
-      {/* Left Panel: Mailboxes */}
-      <aside className="w-64 bg-gray-100 border-r border-gray-200 pt-10">
-        <div className="p-4">
+      {/* Panel Izquierdo: Buzones */}
+      <aside className="w-64 bg-gray-100 border-r border-gray-200">
+        <div className="p-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold">MailKit</h1>
+          <button onClick={handleNewEmail} className="px-3 py-1 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700">New</button>
         </div>
-        <nav className="p-2">
-          {/* Mailbox list would be rendered here */}
-        </nav>
+        {/* ... renderizado de la lista de buzones ... */}
       </aside>
 
-      {/* Middle Panel: Email List */}
-      <section className="flex-1 min-w-0 bg-white border-r border-gray-200 pt-10">
-        <div className="p-4 border-b border-gray-200">
-          <input
-            type="search"
-            placeholder="Search mail"
-            className="w-full px-4 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-        </div>
-        {/* Email list would be rendered here */}
+      {/* Panel Central: Lista de Correos */}
+      <section className="flex-1 min-w-0 bg-white border-r border-gray-200">
+        {/* ... renderizado de la lista de correos ... */}
       </section>
 
-      {/* Right Panel: Email Viewer */}
-      <main className="flex-1 p-6 bg-white overflow-y-auto pt-10">
-        <div className="flex items-center justify-center h-full text-gray-500">
-            <p>Select an email to read</p>
-        </div>
+      {/* Panel Derecho: Visor de Correos */}
+      <main className="flex-1 p-6 bg-white overflow-y-auto">
+        {selectedEmail && (
+          <div className="flex justify-end mb-4">
+            <button onClick={handleDeleteEmail} className="px-3 py-1 bg-red-600 text-white rounded-md text-sm hover:bg-red-700">Delete</button>
+          </div>
+        )}
+        {/* ... renderizado del cuerpo del correo ... */}
       </main>
     </div>
   );
-}
+};
+
+// Esta línea asegura que la página requiera autenticación
+InboxPage.auth = true;
+
+export default InboxPage;

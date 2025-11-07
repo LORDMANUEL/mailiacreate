@@ -16,7 +16,20 @@ Este repositorio contiene la **base funcional** de la MailKit Rust Suite. Las fa
 *   **Fase 1 - Colaboración (Documentación):**
     *   Se ha proporcionado documentación detallada para configurar Nextcloud (Archivos/Calendarios/Contactos), Matrix Synapse (Chat) y Jitsi Meet (Videollamadas).
 
-Las fases pendientes de desarrollo completo de la interfaz de usuario son: **Fase 2 (Panel de Administración)**, **Fase 3 (Panel de TI)** y **Fase 4 (Send-Router)**. Las aplicaciones para estas fases existen como placeholders.
+Las aplicaciones para estas fases existen como prototipos funcionales contra una API de simulación.
+
+## Fase de Desarrollo Actual: Integración Completa (En Progreso)
+
+Actualmente, estamos trabajando activamente en la siguiente fase del proyecto: reemplazar todos los componentes simulados con integraciones a los servicios de backend reales.
+
+**Objetivos de esta fase:**
+
+*   **Conectar el Panel de Administración** a la API de administración de Stalwart.
+*   **Implementar un flujo de autenticación completo** en el Webmail usando Keycloak y JMAP.
+*   **Añadir funcionalidades de escritura** (enviar, responder, eliminar) al Webmail.
+*   **Conectar el Send-Router** para que envíe notificaciones reales.
+
+El objetivo es transformar el prototipo actual en un sistema 100% funcional.
 
 ## Servicios Incluidos
 
@@ -122,8 +135,17 @@ Después de desplegar la suite por primera vez, necesitas configurar Keycloak pa
     *   Crea un cliente para el **Panel de Administración**:
         *   **Client ID:** `admin-panel`
         *   **Valid Redirect URIs:** `https://admin.tudominio.com/*`
-        *   **Web Origins:** `https://admin.tudominio.com`
-    *   Guarda el cliente. Repite el proceso para el **Panel de TI** (`it-panel`).
+    *   **Web Origins:** `https://admin.{$DOMAIN}`
+    *   Guarda el cliente. Repite el proceso para el **Panel de TI** (`it-panel`) y para el **Webmail** (`webmail`).
+
+4.  **Crea un Cliente para Stalwart (Servicio):**
+    *   Ve a "Clients" y haz clic en "Create client".
+    *   **Client ID:** `stalwart`
+    *   **Client authentication:** ON
+    *   **Authorization:** ON
+    *   Guarda el cliente. En la pestaña "Credentials", copia el "Client secret" y añádelo a tu archivo `.env` como `STALWART_CLIENT_SECRET`.
+
+5.  **Crea Roles de Aplicación:**
 
 4.  **Crea Roles de Aplicación:**
     *   Ve a "Clients", selecciona `admin-panel`.
