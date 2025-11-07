@@ -156,19 +156,34 @@ El proyecto está listo para producción, pero se mantiene un **backlog activo**
 
 ### Experiencia de usuario
 
-1. **Webmail modular estilo Gmail+** siguiendo el [blueprint de mejoras](docs/BLUEPRINT_MEJORAS.md): panel de resumen unificado, chat y calendario embebidos, firmas dinámicas y colaboración en tiempo real.
-2. **Add-ons y automatizaciones**: catálogos plug-and-play para n8n, asistentes IA dentro del webmail y workflows de revisión/aprobación multi-canal.
+1. **Webmail modular estilo Gmail+** siguiendo el [blueprint de mejoras](docs/BLUEPRINT_MEJORAS.md):
+   - Layout de tres paneles con módulos anclables (chat, calendario, tareas, firmas dinámicas).
+   - Modo colaborativo en tiempo real (presencia Matrix, anotaciones sobre correos, co-redacción de respuestas).
+   - Dark mode, accesibilidad AA y diseño responsive basado en design tokens compartidos.
+2. **Add-ons y automatizaciones** plug-and-play:
+   - Integraciones aprobadas con n8n, asistentes IA contextuales y workflows de aprobación multi-canal.
+   - Marketplace de extensiones internas con permisos declarativos y telemetría de adopción.
 
 ### Operaciones y confiabilidad
 
-3. **Pruebas de estrés 24/7** con cargas multi-inquilino para JMAP, Matrix, Jitsi y Nextcloud, alimentadas por `scripts/synthetic-checks.sh` en modo cronometrado.
-4. **Orquestación avanzada**: empaquetar Helm charts / Nomad jobs y habilitar despliegues híbridos activo-activo con el `docker-compose.ha.yml` como base de referencia.
-5. **Gobierno y cumplimiento**: retención legal, legal-hold, exportaciones con sellado de tiempo y reportes de cumplimiento automatizados.
+3. **Pruebas de estrés 24/7**:
+   - Jobs cronometrados para JMAP, Matrix, Jitsi y Nextcloud con cargas multi-inquilino y reportes automáticos en Grafana.
+   - Alarmas cuando la latencia o tasa de éxito supere umbrales definidos por SLO.
+4. **Orquestación avanzada**:
+   - Charts Helm / jobs Nomad basados en la topología Compose actual con soporte activo-activo.
+   - Balanceadores dedicados, auto-escalado horizontal y pipelines GitOps para aplicar los manifests.
+5. **Gobierno y cumplimiento** reforzado:
+   - Retención legal y legal-hold configurables por dominio.
+   - Exportaciones automáticas con sellado de tiempo y firmas electrónicas de auditoría.
 
 ### Identidad y datos
 
-6. **Automatización SCIM continua**: extender el bridge para soportar ciclos de vida complejos (bajas temporales, grupos jerárquicos, dominios múltiples) y auditar cambios en Grafana.
-7. **Ecosistema de datos**: exponer catálogos de eventos (SCIM, send-router, synthetic) en warehouses externos y publicar conectores oficiales.
+6. **Automatización SCIM continua**:
+   - Ciclos de vida complejos (bajas temporales, reactivaciones, dominios múltiples) reflejados en Keycloak y Stalwart.
+   - Auditoría centralizada en Grafana/Loki con dashboards de identidad y alertas de drift.
+7. **Ecosistema de datos** federado:
+   - Conectores oficiales para warehouses y lagos (BigQuery, Snowflake, S3) con catálogos de eventos normalizados.
+   - APIs y contratos para que terceros amplíen la plataforma sin romper compatibilidad.
 
 > Cada iniciativa cuenta con historias de usuario y lineamientos técnicos en [`docs/BLUEPRINT_MEJORAS.md`](docs/BLUEPRINT_MEJORAS.md) y en la sección de próximos pasos del plan de desarrollo.
 

@@ -4,48 +4,53 @@ Este blueprint recoge iniciativas para evolucionar la experiencia de MailiaCreat
 
 ## 1. Experiencia de usuario webmail estilo Gmail++
 - **Objetivo:** convertir el webmail Next.js en un cliente de productividad de clase mundial sin abandonar el despliegue "clonar y ejecutar".
-- **Líneas de trabajo:**
-  - Rediseño visual responsive basado en design tokens y dark mode.
-  - Panel lateral modular con add-ons (CRM, notas, IA) acoplables vía `apps/` y feature flags.
-  - Editor enriquecido con plantillas corporativas, firmas sincronizadas y atajos personalizables.
-  - Extensiones contextuales: calendario incrustado, chat Matrix embebido y tablero de tareas.
+- **Entregables clave:**
+  - Rediseño visual responsive basado en design tokens, dark mode y accesibilidad AA.
+  - Layout modular de tres paneles con add-ons (CRM, notas, IA) acoplables vía `apps/` y feature flags.
+  - Editor enriquecido con plantillas corporativas, firmas sincronizadas, atajos personalizables y co-redacción en tiempo real.
+  - Extensiones contextuales: calendario incrustado, chat Matrix embebido, tablero de tareas y presencia en vivo.
   - Integración nativa con n8n mediante webhooks y OAuth para automatizar flujos sin código.
+- **Métricas de éxito:** adopción de add-ons, tiempo medio de respuesta, NPS interno, uso de modo colaborativo.
 - **Dependencias:** biblioteca de componentes compartida, endpoints JMAP extendidos, contrato de add-ons.
 
 ## 2. Productividad integrada (correo + chat + calendario)
 - **Objetivo:** ofrecer una vista unificada para que el usuario no abandone la plataforma.
-- **Líneas de trabajo:**
-  - Pestañas de conversación que agrupan hilo de correo, chat Matrix y evento de calendario.
-  - Notificaciones push unificadas (FCM/Web Push) con centro de actividades en el webmail.
-  - Agenda inteligente con booking de salas Jitsi y disponibilidad cruzada (CalDAV + Matrix presence).
+- **Entregables clave:**
+  - Pestañas de conversación que agrupan hilo de correo, chat Matrix y evento de calendario con sincronización bidireccional.
+  - Notificaciones push unificadas (FCM/Web Push) con centro de actividades y snooze contextual.
+  - Agenda inteligente con booking de salas Jitsi, disponibilidad cruzada (CalDAV + Matrix presence) y recordatorios automatizados.
   - Widgets "one-click" para convertir correos en tareas o automatizaciones n8n.
+- **Métricas de éxito:** uso de pestañas unificadas, tasa de adopción de widgets, latencia de notificaciones push.
 - **Dependencias:** APIs de Matrix y Nextcloud, permisos Keycloak (scopes delegados), worker en el webmail para notificaciones.
 
 ## 3. Automatización y flujos inteligentes
 - **Objetivo:** preparar la suite para escenarios IA/hyperautomation.
-- **Líneas de trabajo:**
-  - Motor de reglas visual con integración n8n para disparar flujos desde eventos JMAP o Matrix.
-  - Panel de insights con resúmenes automáticos (LLM) y clasificación de prioridad en bandeja.
+- **Entregables clave:**
+  - Motor de reglas visual con integración n8n para disparar flujos desde eventos JMAP o Matrix y seguimiento en tiempo real.
+  - Panel de insights con resúmenes automáticos (LLM), clasificación de prioridad en bandeja y sugerencias accionables.
   - Enriquecimiento de contactos con datos externos (CRM, Clearbit) y detección de anomalías en envíos.
-  - Catálogo de plantillas y playbooks compartidos con versionado.
+  - Catálogo de plantillas y playbooks compartidos con versionado y permisos granulares.
+- **Métricas de éxito:** workflows creados, ahorro de tiempo en clasificar correos, tasa de falsos positivos en alertas IA.
 - **Dependencias:** servicio `ai-orchestrator`, colas send-router, almacenamiento MinIO para embeddings, credenciales de IA externas.
 
 ## 4. Operaciones y escalabilidad
 - **Objetivo:** reforzar la plataforma para entornos multi-inquilino y despliegues HA.
-- **Líneas de trabajo:**
-  - Topología activa-activa con replicación de Stalwart, Synapse y Nextcloud.
-  - Multi-región y disaster recovery automático (restic + replicación S3 cruzada).
-  - Auto-scaling horizontal del webmail/paneles vía Kubernetes o Nomad.
+- **Entregables clave:**
+  - Topología activa-activa con replicación de Stalwart, Synapse y Nextcloud, failover Keepalived/HAProxy y pruebas de caos.
+  - Multi-región y disaster recovery automático (restic + replicación S3 cruzada) con ejercicios trimestrales documentados.
+  - Auto-scaling horizontal del webmail/paneles vía Kubernetes o Nomad y pipelines GitOps.
   - Portal de observabilidad con SLOs, synthetic exporter avanzado y RCA asistido por IA.
+- **Métricas de éxito:** RTO/RPO confirmados, disponibilidad mensual, número de incidentes detectados proactivamente.
 - **Dependencias:** publicación de imágenes multi-arquitectura, pipelines reproducibles, exporter sintético, SCIM bridge en HA.
 
 ## 5. Identidad y ecosistema
 - **Objetivo:** centralizar el ciclo de vida de identidades y accesos.
-- **Líneas de trabajo:**
-  - Finalizar la automatización SCIM (HRIS → Keycloak → Stalwart) con workflows reversibles.
-  - Sincronización de grupos/roles con paneles y Matrix (SCIM + Keycloak admin events).
-  - Portal de autoservicio de usuarios (reseteo de credenciales, provisión de dispositivos).
-  - Integraciones marketplace (Atlassian, GitLab, Slack) a través de OIDC/SAML.
+- **Entregables clave:**
+  - Automatización SCIM extendida (HRIS → Keycloak → Stalwart) con workflows reversibles y pruebas de regresión.
+  - Sincronización de grupos/roles con paneles, Matrix y servicios externos mediante SCIM + eventos administrativos de Keycloak.
+  - Portal de autoservicio de usuarios (reseteo de credenciales, provisión de dispositivos, solicitudes de acceso).
+  - Integraciones marketplace (Atlassian, GitLab, Slack) a través de OIDC/SAML con provisioning asistido.
+- **Métricas de éxito:** tiempo medio de alta/baja, incidencias de acceso, adopción del portal de autoservicio.
 - **Dependencias:** servicio `scim-bridge`, hooks de Keycloak, APIs Stalwart, documentación HRIS.
 
 ## 6. Roadmap sugerido
