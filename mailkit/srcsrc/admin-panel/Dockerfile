@@ -1,4 +1,4 @@
-# Dockerfile for Next.js webmail frontend
+# Dockerfile for Next.js admin-panel frontend
 
 # --- 1. Dependencies ---
 FROM node:18-alpine AS deps
@@ -16,6 +16,7 @@ RUN npm run build
 # --- 3. Runner ---
 FROM node:18-alpine AS runner
 WORKDIR /usr/src/app
+# No es necesario copiar node_modules, Next.js los empaqueta
 COPY --from=builder /usr/src/app/.next ./.next
 COPY --from=builder /usr/src/app/public ./public
 COPY package.json .

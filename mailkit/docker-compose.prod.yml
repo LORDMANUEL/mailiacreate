@@ -19,7 +19,7 @@ services:
       - mailkit_net
 
   stalwart:
-    image: stalwartlabs/mail-server:latest
+    image: stalwartlabs/mail-server:v0.11.8-alpine
     restart: unless-stopped
     ports:
       - "25:25"   # SMTP

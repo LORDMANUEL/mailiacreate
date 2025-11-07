@@ -11,14 +11,14 @@ fi
 
 # --- Gestión de la Red ---
 echo "Verificando la red de Docker..."
-docker network inspect mailkit_net >/dev/null 2>&1 || {
+sudo docker network inspect mailkit_net >/dev/null 2>&1 || {
     echo "Creando red externa 'mailkit_net'..."
-    docker network create mailkit_net
+    sudo docker network create mailkit_net
 }
 
 # --- Despliegue de los Servicios ---
 echo "Iniciando la pila principal de servicios (Stalwart, Caddy, etc.)..."
-sudo docker compose -f mailkit/docker-compose.prod.yml --env-file mailkit/.env up -d
+sudo docker compose -f mailkit/docker-compose.prod.yml --env-file mailkit/.env up -d --build
 
 echo "Iniciando la pila de servicios de Jitsi Meet..."
 sudo docker compose -f mailkit/docker-compose.jitsi.yml --env-file mailkit/.env.jitsi up -d
