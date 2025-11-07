@@ -2,6 +2,13 @@
 
 Este blueprint recoge iniciativas para evolucionar la experiencia de MailiaCreate más allá del release actual. Se agrupan por pilares estratégicos y cada bloque incluye el objetivo, entregables sugeridos y dependencias clave.
 
+## Estado actual de las mejoras
+- ✅ **Webmail Gmail+ desplegado:** layout de tres paneles, módulos anclables (chat, calendario, co-redacción, firmas) y presencia Matrix integrada.
+- ✅ **Telemetría operativa:** Sentry, Mixpanel, Hotjar y exportador sintético conectados a Grafana/Alertmanager.
+- ✅ **Automatización SCIM extendida:** aprovisionamiento/baja-reactivación conectado con Keycloak y Stalwart.
+- ✅ **CI/CD endurecido:** builds Next.js firmados, imágenes multi-arquitectura y restauraciones Restic programadas.
+- ⏳ **Backlog activo:** las secciones siguientes detallan las iniciativas en curso o planificadas.
+
 ## 1. Experiencia de usuario webmail estilo Gmail++
 - **Objetivo:** convertir el webmail Next.js en un cliente de productividad de clase mundial sin abandonar el despliegue "clonar y ejecutar".
 - **Entregables clave:**

@@ -152,19 +152,27 @@ Cada fase del roadmap cuenta con su propio informe QA (`docs/QA/FASE*.md`), lo q
 
 ## Mejoras continuas recomendadas
 
-El proyecto está listo para producción, pero se mantiene un **backlog activo** con los siguientes focos de evolución:
+El proyecto está listo para producción y ya incorpora varias mejoras clave. Se mantiene un **backlog activo** para seguir elevando la experiencia.
 
-### Experiencia de usuario
+### Mejoras aplicadas recientemente
 
-1. **Webmail modular estilo Gmail+** siguiendo el [blueprint de mejoras](docs/BLUEPRINT_MEJORAS.md):
-   - Layout de tres paneles con módulos anclables (chat, calendario, tareas, firmas dinámicas).
-   - Modo colaborativo en tiempo real (presencia Matrix, anotaciones sobre correos, co-redacción de respuestas).
-   - Dark mode, accesibilidad AA y diseño responsive basado en design tokens compartidos.
-2. **Add-ons y automatizaciones** plug-and-play:
+- ✅ **Webmail Gmail+**: interfaz de tres paneles con presencia Matrix, chat y calendario incrustados, firmas dinámicas y co-redacción en vivo siguiendo el [blueprint de mejoras](docs/BLUEPRINT_MEJORAS.md).
+- ✅ **Telemetría unificada**: Sentry, Mixpanel y Hotjar configurados desde el instalador en paneles y microservicios, con dashboards Grafana y exportador sintético integrados.
+- ✅ **Automatización SCIM y multi-canal**: bridge SCIM con baja/reactivación propagada a Keycloak y Stalwart, send-router con colas BullMQ, IA preventiva y métricas Prometheus.
+- ✅ **Resiliencia operativa**: workflows CI/CD multi-arquitectura, validaciones de restore Restic y scripts sintéticos cronometrados para correo, chat y video.
+
+### Próximas iteraciones sugeridas
+
+#### Experiencia y productividad
+
+1. **Add-ons y automatizaciones plug-and-play**:
    - Integraciones aprobadas con n8n, asistentes IA contextuales y workflows de aprobación multi-canal.
    - Marketplace de extensiones internas con permisos declarativos y telemetría de adopción.
+2. **Productividad unificada**:
+   - Pestañas que agrupen correo, chat y eventos con notificaciones push y widgets "one-click" para tareas.
+   - Agenda inteligente con reservas Jitsi y disponibilidad cruzada CalDAV/Matrix.
 
-### Operaciones y confiabilidad
+#### Operaciones y confiabilidad
 
 3. **Pruebas de estrés 24/7**:
    - Jobs cronometrados para JMAP, Matrix, Jitsi y Nextcloud con cargas multi-inquilino y reportes automáticos en Grafana.
@@ -172,16 +180,16 @@ El proyecto está listo para producción, pero se mantiene un **backlog activo**
 4. **Orquestación avanzada**:
    - Charts Helm / jobs Nomad basados en la topología Compose actual con soporte activo-activo.
    - Balanceadores dedicados, auto-escalado horizontal y pipelines GitOps para aplicar los manifests.
-5. **Gobierno y cumplimiento** reforzado:
+5. **Gobierno y cumplimiento reforzados**:
    - Retención legal y legal-hold configurables por dominio.
    - Exportaciones automáticas con sellado de tiempo y firmas electrónicas de auditoría.
 
-### Identidad y datos
+#### Identidad y datos
 
 6. **Automatización SCIM continua**:
    - Ciclos de vida complejos (bajas temporales, reactivaciones, dominios múltiples) reflejados en Keycloak y Stalwart.
    - Auditoría centralizada en Grafana/Loki con dashboards de identidad y alertas de drift.
-7. **Ecosistema de datos** federado:
+7. **Ecosistema de datos federado**:
    - Conectores oficiales para warehouses y lagos (BigQuery, Snowflake, S3) con catálogos de eventos normalizados.
    - APIs y contratos para que terceros amplíen la plataforma sin romper compatibilidad.
 
