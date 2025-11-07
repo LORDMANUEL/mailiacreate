@@ -76,23 +76,27 @@ Si configuras `SEND_ROUTER_AI_URL`, cada mensaje pasa por `ai-orchestrator`; val
 
 ## Automatización CI/CD
 
-- `./scripts/hardening-check.sh --ci` y `./scripts/synthetic-checks.sh` se ejecutan en el workflow `.github/workflows/ci.yml` junto con `npm run build` para los paneles, reutilizando cachés de dependencias.
-- Las imágenes de `admin-panel`, `it-panel`, `send-router`, `ai-orchestrator`, `restic-scheduler`, `scim-bridge` y `synthetic-exporter` se construyen (multi-arquitectura) y firman desde `.github/workflows/release-images.yml` al publicar tags `v*.*.*` en GitHub.
-- El workflow `restore-check.yml` corre de manera programada para crear un backup, eliminar datos de prueba y validar la restauración de volúmenes críticos.
+- `./scripts/hardening-check.sh --ci` y `./scripts/synthetic-checks.sh` se ejecutan en el workflow `.github/workflows/ci.yml` junto con `npm run build` para los paneles, reutilizando cachés de dependencias y firmando los artefactos `.next` con Cosign.
+- Las imágenes de `admin-panel`, `it-panel`, `send-router`, `ai-orchestrator`, `restic-scheduler`, `scim-bridge` y `synthetic-exporter` se construyen (linux/amd64, linux/arm64, linux/arm64/v8) y se firman desde `.github/workflows/release-images.yml` al publicar tags `v*.*.*` en GitHub. Tras cada release se lanza un smoke test en runners ARM reales.
+- El workflow `restore-check.yml` corre de manera programada para crear un backup multi-inquilino, eliminar datos de prueba y validar la restauración de volúmenes críticos comparando checksums antes/después.
 - Para despliegues masivos, integra estos workflows con tu inventario Ansible o plataforma GitOps consumiendo las imágenes firmadas publicadas en GHCR.
 
 ## Sincronización de identidades
 
 - Usa Keycloak como autoridad central y habilita el conector SCIM: `Realm Settings > User Registration > SCIM`.
-- Despliega el servicio `scim-bridge`, configurando `SCIM_CLIENT_ID/SECRET` (cliente confidencial en Keycloak) y las credenciales de Stalwart (`STALWART_ADMIN_USER/PASSWORD`). El bridge recibe `POST /scim/v2/Users` y refleja altas, bajas y actualizaciones.
-- Configura Stalwart con `ADMIN_API_TOKEN` y apunta el panel admin a `STALWART_ADMIN_API` para reflejar altas/bajas.
-- El flujo recomendado es: HRIS → Keycloak (SCIM) → `scim-bridge` → Stalwart (`POST /users`) y paneles Next.js.
+- Despliega el servicio `scim-bridge`, configurando `SCIM_CLIENT_ID/SECRET` (cliente confidencial en Keycloak) y las credenciales de Stalwart (`STALWART_ADMIN_USER/PASSWORD`). El bridge gestiona `POST/PATCH/DELETE /scim/v2/Users` para altas, bajas y reactivaciones, sincroniza grupos Keycloak y asegura membresías en Stalwart.
+- Configura Stalwart con `ADMIN_API_TOKEN` y apunta el panel admin a `STALWART_ADMIN_API` para reflejar altas/bajas y pertenencias de grupos.
+- El flujo recomendado es: HRIS → Keycloak (SCIM) → `scim-bridge` → Stalwart (`POST /users`, `POST /groups`) y paneles Next.js. Las desactivaciones en HRIS bloquean el usuario, limpian membresías y eliminan el buzón en Stalwart.
 
 ## Monitorización sintética avanzada
 
-- El servicio `synthetic-exporter` ejecuta `scripts/synthetic-checks.sh --json` contra `SYNTHETIC_TARGET_HOST` y expone métricas Prometheus en `:8090/metrics`.
+- El servicio `synthetic-exporter` ejecuta `scripts/synthetic-checks.sh --json` contra `SYNTHETIC_TARGET_HOST` y expone métricas Prometheus en `:8090/metrics`, incluyendo `synthetic_check_duration_milliseconds`.
 - Ajusta `SYNTHETIC_EXTRA_ARGS="--skip-tls"` para despliegues con certificados auto-firmados o laboratorios IP-only.
-- Prometheus recopila la métrica `synthetic_overall_status`; la regla `SyntheticChecksFailing` enciende alertas críticas tras 5 minutos de fallos continuos.
+- Programa el script manualmente si quieres redundancia adicional:
+  ```cron
+  */5 * * * * root /opt/mailiacreate/scripts/synthetic-checks.sh --host mail.ejemplo.com --json > /var/log/mailiacreate/synthetic.json
+  ```
+- Prometheus recopila `synthetic_overall_status` y las duraciones; la regla `SyntheticChecksFailing` enciende alertas críticas tras 5 minutos de fallos continuos y Grafana muestra tiempos de roundtrip correo extremo a extremo.
 
 ## Hardening previo a producción
 

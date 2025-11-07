@@ -23,8 +23,11 @@ if (process.env.SENTRY_DSN) {
 const serverState = {
   lastSync: null,
   processed: 0,
+  groupProcessed: 0,
   failures: 0
 };
+
+const groupCache = new Map();
 
 async function readBody(req) {
   const chunks = [];
@@ -132,6 +135,11 @@ function mapScimUser(scimBody) {
     throw new Error('SCIM user missing userName');
   }
   const [localPart, domainPart = ''] = username.split('@');
+  const groups = Array.isArray(scimBody.groups)
+    ? scimBody.groups
+        .map((entry) => entry.value || entry.display || entry)
+        .filter(Boolean)
+    : [];
   return {
     id: scimBody.id || null,
     username,
@@ -141,7 +149,8 @@ function mapScimUser(scimBody) {
     firstName: scimBody.name?.givenName || '',
     lastName: scimBody.name?.familyName || '',
     displayName: scimBody.displayName || `${scimBody.name?.givenName ?? ''} ${scimBody.name?.familyName ?? ''}`.trim(),
-    active: scimBody.active !== false
+    active: scimBody.active !== false,
+    groups
   };
 }
 
@@ -186,6 +195,13 @@ async function disableKeycloakUser(username) {
     return;
   }
   const current = existing[0];
+  const memberships = await fetchKeycloakUserGroups(current.id);
+  for (const groupName of memberships) {
+    const groupId = await ensureKeycloakGroup(groupName);
+    if (groupId) {
+      await keycloakRequest(`/users/${current.id}/groups/${groupId}`, { method: 'DELETE' }).catch(() => undefined);
+    }
+  }
   await keycloakRequest(`/users/${current.id}`, {
     method: 'PUT',
     body: JSON.stringify({ enabled: false })
@@ -222,6 +238,142 @@ async function syncStalwartUser(user) {
   }
 }
 
+async function ensureKeycloakGroup(groupName) {
+  if (!groupName) {
+    return null;
+  }
+  if (groupCache.has(`kc:${groupName}`)) {
+    return groupCache.get(`kc:${groupName}`);
+  }
+  const existing = await keycloakRequest(`/groups?search=${encodeURIComponent(groupName)}`);
+  if (Array.isArray(existing)) {
+    const match = existing.find((group) => group.path?.endsWith(groupName));
+    if (match) {
+      groupCache.set(`kc:${groupName}`, match.id);
+      return match.id;
+    }
+  }
+  const created = await keycloakRequest('/groups', {
+    method: 'POST',
+    body: JSON.stringify({
+      name: groupName
+    })
+  });
+  const refreshed = await keycloakRequest(`/groups?search=${encodeURIComponent(groupName)}`);
+  const identifier = Array.isArray(refreshed) ? refreshed.find((group) => group.path?.endsWith(groupName)) : null;
+  if (identifier?.id) {
+    groupCache.set(`kc:${groupName}`, identifier.id);
+    return identifier.id;
+  }
+  return created?.id || null;
+}
+
+async function ensureStalwartGroup(groupName, domain) {
+  if (!groupName || !domain) {
+    return;
+  }
+  const cacheKey = `stalwart:${groupName}@${domain}`;
+  if (groupCache.has(cacheKey)) {
+    return;
+  }
+  try {
+    await stalwartRequest('/groups', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: groupName,
+        domain,
+        description: `${groupName} synced via SCIM`
+      })
+    });
+    groupCache.set(cacheKey, true);
+  } catch (error) {
+    if (error.message.includes('409')) {
+      groupCache.set(cacheKey, true);
+      return;
+    }
+    throw error;
+  }
+}
+
+async function fetchKeycloakUserGroups(userId) {
+  const groups = await keycloakRequest(`/users/${userId}/groups`);
+  if (!Array.isArray(groups)) {
+    return [];
+  }
+  return groups.map((group) => group.name).filter(Boolean);
+}
+
+async function syncKeycloakMemberships(userId, groupNames) {
+  if (!userId) {
+    return;
+  }
+  const desired = new Set(groupNames);
+  const current = await fetchKeycloakUserGroups(userId);
+  for (const groupName of desired) {
+    const groupId = await ensureKeycloakGroup(groupName);
+    if (!groupId) {
+      continue;
+    }
+    if (!current.includes(groupName)) {
+      await keycloakRequest(`/users/${userId}/groups/${groupId}`, { method: 'PUT' });
+    }
+  }
+  for (const existing of current) {
+    if (!desired.has(existing)) {
+      const groupId = await ensureKeycloakGroup(existing);
+      if (groupId) {
+        await keycloakRequest(`/users/${userId}/groups/${groupId}`, { method: 'DELETE' }).catch(() => undefined);
+      }
+    }
+  }
+}
+
+async function syncStalwartMembership(user, groups) {
+  if (!user.domain || !Array.isArray(groups)) {
+    return;
+  }
+  for (const groupName of groups) {
+    await ensureStalwartGroup(groupName, user.domain);
+    await stalwartRequest(`/groups/${encodeURIComponent(`${groupName}@${user.domain}`)}/members`, {
+      method: 'POST',
+      body: JSON.stringify({ username: user.localPart })
+    }).catch((error) => {
+      if (!error.message.includes('409')) {
+        throw error;
+      }
+    });
+  }
+}
+
+async function pruneStalwartMembership(user, groups) {
+  if (!user.domain) {
+    return;
+  }
+  const desired = new Set(groups);
+  const members = await stalwartRequest(
+    `/groups?domain=${encodeURIComponent(user.domain)}&member=${encodeURIComponent(user.localPart)}`
+  );
+  if (!Array.isArray(members)) {
+    return;
+  }
+  for (const entry of members) {
+    const groupName = entry.name || entry.id || '';
+    if (groupName && !desired.has(groupName)) {
+      await stalwartRequest(`/groups/${encodeURIComponent(`${groupName}@${user.domain}`)}/members/${encodeURIComponent(user.localPart)}`, {
+        method: 'DELETE'
+      }).catch(() => undefined);
+    }
+  }
+}
+
+async function syncGroupsForUser(user, groups) {
+  const uniqueGroups = Array.from(new Set(groups || [])).filter(Boolean);
+  const userId = await ensureKeycloakUser(user);
+  await syncKeycloakMemberships(userId, uniqueGroups);
+  await syncStalwartMembership(user, uniqueGroups);
+  await pruneStalwartMembership(user, uniqueGroups);
+}
+
 async function removeStalwartUser(user) {
   if (!user.domain) {
     return;
@@ -234,8 +386,11 @@ async function removeStalwartUser(user) {
 async function handleScimCreate(req, res) {
   const body = await readBody(req);
   const user = mapScimUser(body);
-  await ensureKeycloakUser(user);
+  const userId = await ensureKeycloakUser(user);
   await syncStalwartUser(user);
+  if (user.groups?.length) {
+    await syncGroupsForUser(user, user.groups);
+  }
   serverState.lastSync = new Date().toISOString();
   serverState.processed += 1;
   sendJson(res, 201, { id: user.username, status: 'created' });
@@ -252,10 +407,19 @@ async function handleScimPatch(req, res, scimId) {
     if (operation.value && typeof operation.value === 'object') {
       Object.assign(merged, operation.value);
     }
+    if (operation.path?.toLowerCase() === 'active') {
+      merged.active = operation.value !== false;
+    }
   }
   const user = mapScimUser({ ...merged, userName: scimId });
-  await ensureKeycloakUser(user);
+  const userId = await ensureKeycloakUser(user);
   await syncStalwartUser(user);
+  if (user.groups?.length) {
+    await syncGroupsForUser(user, user.groups);
+  } else {
+    await syncKeycloakMemberships(userId, []);
+    await pruneStalwartMembership(user, []);
+  }
   serverState.lastSync = new Date().toISOString();
   serverState.processed += 1;
   sendJson(res, 200, { id: user.username, status: 'updated' });
@@ -267,6 +431,75 @@ async function handleScimDelete(res, scimId) {
   serverState.lastSync = new Date().toISOString();
   serverState.processed += 1;
   sendJson(res, 200, { id: scimId, status: 'deactivated' });
+}
+
+function mapScimGroup(scimBody) {
+  if (!scimBody || typeof scimBody !== 'object') {
+    throw new Error('Invalid SCIM group payload');
+  }
+  const name = scimBody.displayName || scimBody.id || scimBody.externalId;
+  if (!name) {
+    throw new Error('SCIM group missing displayName');
+  }
+  const members = Array.isArray(scimBody.members)
+    ? scimBody.members.map((member) => member.value || member).filter(Boolean)
+    : [];
+  return { name, members };
+}
+
+async function handleScimGroupCreate(req, res) {
+  const body = await readBody(req);
+  const group = mapScimGroup(body);
+  const domain = body?.meta?.attributes?.domain || process.env.SCIM_DEFAULT_DOMAIN || '';
+  await ensureKeycloakGroup(group.name);
+  await ensureStalwartGroup(group.name, domain);
+  for (const member of group.members) {
+    const user = mapScimUser({ userName: member });
+    await syncGroupsForUser(user, [group.name]);
+  }
+  serverState.groupProcessed += 1;
+  serverState.lastSync = new Date().toISOString();
+  sendJson(res, 201, { id: group.name, status: 'group-created' });
+}
+
+async function handleScimGroupDelete(res, groupId) {
+  const domain = process.env.SCIM_DEFAULT_DOMAIN || '';
+  await keycloakRequest(`/groups/${encodeURIComponent(groupId)}`, { method: 'DELETE' }).catch(() => undefined);
+  if (domain) {
+    await stalwartRequest(`/groups/${encodeURIComponent(`${groupId}@${domain}`)}`, { method: 'DELETE' }).catch(() => undefined);
+  }
+  serverState.groupProcessed += 1;
+  serverState.lastSync = new Date().toISOString();
+  sendJson(res, 200, { id: groupId, status: 'group-removed' });
+}
+
+async function handleScimGroupPatch(req, res, groupId) {
+  const body = await readBody(req);
+  const operations = Array.isArray(body?.Operations) ? body.Operations : [];
+  const members = new Set();
+  for (const operation of operations) {
+    if (operation.path?.toLowerCase() !== 'members') {
+      continue;
+    }
+    const value = Array.isArray(operation.value) ? operation.value : [];
+    for (const entry of value) {
+      if (entry?.value) {
+        members.add(entry.value);
+      }
+    }
+  }
+  const domain = process.env.SCIM_DEFAULT_DOMAIN || '';
+  await ensureKeycloakGroup(groupId);
+  if (domain) {
+    await ensureStalwartGroup(groupId, domain);
+  }
+  for (const member of members) {
+    const user = mapScimUser({ userName: member });
+    await syncGroupsForUser(user, [groupId]);
+  }
+  serverState.groupProcessed += 1;
+  serverState.lastSync = new Date().toISOString();
+  sendJson(res, 200, { id: groupId, status: 'group-updated' });
 }
 
 const server = http.createServer(async (req, res) => {
@@ -288,6 +521,20 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'DELETE' && url.pathname.startsWith('/scim/v2/Users/')) {
       const scimId = decodeURIComponent(url.pathname.replace('/scim/v2/Users/', ''));
       await handleScimDelete(res, scimId);
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === '/scim/v2/Groups') {
+      await handleScimGroupCreate(req, res);
+      return;
+    }
+    if (req.method === 'DELETE' && url.pathname.startsWith('/scim/v2/Groups/')) {
+      const groupId = decodeURIComponent(url.pathname.replace('/scim/v2/Groups/', ''));
+      await handleScimGroupDelete(res, groupId);
+      return;
+    }
+    if (req.method === 'PATCH' && url.pathname.startsWith('/scim/v2/Groups/')) {
+      const groupId = decodeURIComponent(url.pathname.replace('/scim/v2/Groups/', ''));
+      await handleScimGroupPatch(req, res, groupId);
       return;
     }
     sendJson(res, 404, { error: 'Not found' });

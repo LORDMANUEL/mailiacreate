@@ -25,6 +25,16 @@ jobs:
             services/admin-panel/package*.json
             services/it-panel/package*.json
 
+      - name: Restore Next.js cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            services/admin-panel/.next/cache
+            services/it-panel/.next/cache
+          key: ${{ runner.os }}-next-cache-${{ hashFiles('services/admin-panel/package-lock.json', 'services/it-panel/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-next-cache-
+
       - name: Prime npm cache
         uses: actions/cache@v4
         with:
@@ -45,14 +55,32 @@ jobs:
           npm run --prefix services/admin-panel build
           npm run --prefix services/it-panel build
 
+      - name: Create reproducible archives
+        run: |
+          tar --sort=name --mtime='@0' --owner=0 --group=0 --numeric-owner -czf admin-panel-next.tar.gz -C services/admin-panel .next
+          tar --sort=name --mtime='@0' --owner=0 --group=0 --numeric-owner -czf it-panel-next.tar.gz -C services/it-panel .next
+          sha256sum admin-panel-next.tar.gz it-panel-next.tar.gz > next-builds.sha256
+
+      - name: Sign build artifacts
+        env:
+          COSIGN_EXPERIMENTAL: '1'
+        run: |
+          curl -sSL https://github.com/sigstore/cosign/releases/download/v2.2.4/cosign-linux-amd64 > cosign
+          install -m 755 cosign /usr/local/bin/cosign
+          cosign sign-blob --yes --output-signature admin-panel-next.tar.gz.sig admin-panel-next.tar.gz
+          cosign sign-blob --yes --output-signature it-panel-next.tar.gz.sig it-panel-next.tar.gz
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: next-builds
           path: |
-            services/admin-panel/.next
-            services/it-panel/.next
-          if-no-files-found: ignore
+            admin-panel-next.tar.gz
+            admin-panel-next.tar.gz.sig
+            it-panel-next.tar.gz
+            it-panel-next.tar.gz.sig
+            next-builds.sha256
+          if-no-files-found: error
 
       - name: Type check panels
         run: |

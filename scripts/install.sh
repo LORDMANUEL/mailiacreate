@@ -289,6 +289,7 @@ set_env_var "$ENV_FILE" "MEET_FQDN" "$MEET_FQDN_VALUE"
 set_env_var "$ENV_FILE" "CLOUD_FQDN" "$CLOUD_FQDN_VALUE"
 set_env_var "$ENV_FILE" "GRAFANA_FQDN" "$GRAFANA_FQDN_VALUE"
 set_env_var "$ENV_FILE" "ADMIN_EMAIL" "$ADMIN_EMAIL_VALUE"
+set_env_var "$ENV_FILE" "SCIM_DEFAULT_DOMAIN" "$MAIL_DOMAIN_VALUE"
 
 if [[ "$LOCAL_MODE" == "true" ]]; then
   set_env_var "$ENV_FILE" "SYNTHETIC_TARGET_HOST" ""

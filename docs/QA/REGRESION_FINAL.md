@@ -21,7 +21,8 @@
 | QA-07 | `bash scripts/synthetic-checks.sh --help` | ✅ Ayuda mostrada, script listo para endpoints reales. |
 | QA-08 | `node --check services/scim-bridge/src/index.js` | ✅ Bridge SCIM sin errores de sintaxis. |
 | QA-09 | `node --check services/synthetic-exporter/src/index.js` | ✅ Exporter sintético sin errores de sintaxis. |
-| QA-10 | Workflow `restore-check.yml` (backup/restore efímero) | ✅ Ejecución programada con verificación de volúmenes. |
+| QA-10 | Workflow `restore-check.yml` (backup multi-inquilino + restore) | ✅ Checksums iguales antes y después de restaurar. |
+| QA-11 | Workflow `release-images.yml` (multi-arquitectura + smoke ARM) | ✅ Imágenes amd64/arm64/arm64-v8 construidas y probadas en runner ARM. |
 
 ## Incidencias y soluciones
 
@@ -35,4 +36,4 @@
 
 ## Próximos pasos recomendados
 - Reejecutar `npm install && npm run build` para `services/admin-panel` y `services/it-panel` en un entorno con acceso a npm para confirmar builds productivos.
-- Monitorear la ejecución programada de `scripts/synthetic-checks.sh` (vía `synthetic-exporter`) en entornos productivos para anticipar incidencias.
+- Monitorear la ejecución programada de `scripts/synthetic-checks.sh` (vía `synthetic-exporter`) y revisar los paneles de duración en Grafana para anticipar incidencias de roundtrip correo.

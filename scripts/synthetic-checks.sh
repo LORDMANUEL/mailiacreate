@@ -80,17 +80,18 @@ record_result() {
   local name="$2"
   local target="$3"
   local message="$4"
+  local duration_ms="$5"
   local entry
-  entry=$(jq -n --arg status "$status" --arg name "$name" --arg target "$target" --arg message "$message" \
-    '{status:$status,name:$name,target:$target,message:$message}')
+  entry=$(jq -n --arg status "$status" --arg name "$name" --arg target "$target" --arg message "$message" --arg duration "$duration_ms" \
+    '{status:$status,name:$name,target:$target,message:$message,durationMs:($duration|tonumber)}')
   RESULTS+=("$entry")
   if [[ "$OUTPUT_FORMAT" == "text" ]]; then
     if [[ "$status" == "ok" ]]; then
-      echo "[synthetic] OK  - $message"
+      echo "[synthetic] OK  - $message (${duration_ms}ms)"
     elif [[ "$status" == "warn" ]]; then
-      echo "[synthetic] WARN - $message"
+      echo "[synthetic] WARN - $message (${duration_ms}ms)"
     else
-      echo "[synthetic] ERR - $message" >&2
+      echo "[synthetic] ERR - $message (${duration_ms}ms)" >&2
     fi
   fi
 }
@@ -98,23 +99,35 @@ record_result() {
 check_http() {
   local url="$1"
   local name="$2"
+  local start end duration
+  start=$(date +%s%3N)
   if curl "${CURL_TLS[@]}" --max-time "$TIMEOUT" "$url" >/dev/null; then
-    record_result "ok" "$name" "$url" "$name ($url)"
+    end=$(date +%s%3N)
+    duration=$(( end - start ))
+    record_result "ok" "$name" "$url" "$name ($url)" "$duration"
   else
-    record_result "error" "$name" "$url" "$name ($url)"
+    end=$(date +%s%3N)
+    duration=$(( end - start ))
+    record_result "error" "$name" "$url" "$name ($url)" "$duration"
     STATUS=1
   fi
 }
 
 check_matrix_login() {
   local homeserver="https://chat.$HOST"
+  local start end duration
+  start=$(date +%s%3N)
   if curl "${CURL_TLS[@]}" --max-time "$TIMEOUT" \
     -H 'Content-Type: application/json' \
     -d '{"identifier":{"type":"m.id.user","user":"healthbot"},"password":"dummy","type":"m.login.password"}' \
     "$homeserver/_matrix/client/v3/login" | jq '.errcode' >/dev/null; then
-    record_result "ok" "matrix" "$homeserver" "Matrix API responde"
+    end=$(date +%s%3N)
+    duration=$(( end - start ))
+    record_result "ok" "matrix" "$homeserver" "Matrix API responde" "$duration"
   else
-    record_result "error" "matrix" "$homeserver" "Matrix API no responde"
+    end=$(date +%s%3N)
+    duration=$(( end - start ))
+    record_result "error" "matrix" "$homeserver" "Matrix API no responde" "$duration"
     STATUS=1
   fi
 }
@@ -122,10 +135,16 @@ check_matrix_login() {
 check_imap() {
   local port=993
   local target="mail.$HOST:$port"
+  local start end duration
+  start=$(date +%s%3N)
   if echo '' | nc -w "$TIMEOUT" "mail.$HOST" "$port" | grep -qi 'ok'; then
-    record_result "ok" "imap" "$target" "IMAP banner detectado"
+    end=$(date +%s%3N)
+    duration=$(( end - start ))
+    record_result "ok" "imap" "$target" "IMAP banner detectado" "$duration"
   else
-    record_result "error" "imap" "$target" "IMAP sin respuesta"
+    end=$(date +%s%3N)
+    duration=$(( end - start ))
+    record_result "error" "imap" "$target" "IMAP sin respuesta" "$duration"
     STATUS=1
   fi
 }
@@ -133,10 +152,16 @@ check_imap() {
 check_smtp() {
   local port=587
   local target="mail.$HOST:$port"
+  local start end duration
+  start=$(date +%s%3N)
   if echo 'QUIT' | nc -w "$TIMEOUT" "mail.$HOST" "$port" | grep -qi '220'; then
-    record_result "ok" "smtp" "$target" "SMTP submission responde"
+    end=$(date +%s%3N)
+    duration=$(( end - start ))
+    record_result "ok" "smtp" "$target" "SMTP submission responde" "$duration"
   else
-    record_result "error" "smtp" "$target" "SMTP submission sin respuesta"
+    end=$(date +%s%3N)
+    duration=$(( end - start ))
+    record_result "error" "smtp" "$target" "SMTP submission sin respuesta" "$duration"
     STATUS=1
   fi
 }
@@ -144,9 +169,13 @@ check_smtp() {
 check_tls_cert() {
   local domain="$1"
   local expiry
+  local start end duration
+  start=$(date +%s%3N)
   expiry=$(echo | openssl s_client -servername "$domain" -connect "$domain:443" 2>/dev/null | openssl x509 -noout -dates | grep notAfter | cut -d= -f2)
   if [[ -z "$expiry" ]]; then
-    record_result "error" "tls" "$domain" "No se pudo obtener expiración TLS de $domain"
+    end=$(date +%s%3N)
+    duration=$(( end - start ))
+    record_result "error" "tls" "$domain" "No se pudo obtener expiración TLS de $domain" "$duration"
     STATUS=1
     return
   fi
@@ -156,9 +185,27 @@ check_tls_cert() {
   now_ts=$(date +%s)
   local diff=$(( (exp_ts - now_ts) / 86400 ))
   if (( diff < 15 )); then
-    record_result "warn" "tls" "$domain" "Certificado de $domain vence en $diff días"
+    end=$(date +%s%3N)
+    duration=$(( end - start ))
+    record_result "warn" "tls" "$domain" "Certificado de $domain vence en $diff días" "$duration"
   else
-    record_result "ok" "tls" "$domain" "Certificado de $domain válido por $diff días"
+    end=$(date +%s%3N)
+    duration=$(( end - start ))
+    record_result "ok" "tls" "$domain" "Certificado de $domain válido por $diff días" "$duration"
+  fi
+}
+
+check_mail_roundtrip() {
+  local start end duration
+  start=$(date +%s%3N)
+  if echo 'QUIT' | nc -w "$TIMEOUT" "mail.$HOST" 587 >/dev/null && echo '' | nc -w "$TIMEOUT" "mail.$HOST" 993 >/dev/null; then
+    end=$(date +%s%3N)
+    duration=$(( end - start ))
+    record_result "ok" "mail_roundtrip" "mail.$HOST" "SMTP+IMAP handshake consecutivo" "$duration"
+  else
+    end=$(date +%s%3N)
+    duration=$(( end - start ))
+    record_result "warn" "mail_roundtrip" "mail.$HOST" "No se pudo validar roundtrip completo" "$duration"
   fi
 }
 
@@ -176,6 +223,7 @@ check_smtp
 check_tls_cert "mail.$HOST"
 check_tls_cert "chat.$HOST"
 check_tls_cert "cloud.$HOST"
+check_mail_roundtrip
 
 if [[ "$OUTPUT_FORMAT" == "json" ]]; then
   overall_status="ok"

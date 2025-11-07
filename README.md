@@ -147,12 +147,12 @@ Cada fase del roadmap cuenta con su propio informe QA (`docs/QA/FASE*.md`), lo q
 
 El proyecto está listo para producción, pero se documentan iniciativas para seguir madurando la operación:
 
-1. **Imágenes multi-arquitectura avanzadas:** ampliar la matriz actual para publicar variantes `linux/arm64/v8` optimizadas y pruebas de smoke en runners ARM.
-2. **Builds reproducibles Next.js:** consolidar cachés y pipelines para `npm run build` en CI con firmas de artefactos.
-3. **Pruebas de restore en CI ampliadas:** programar cargas multi-tenant y validaciones de integridad posteriores al restore.
-4. **Automatización SCIM extendida:** incorporar aprovisionamiento completo HRIS → Keycloak → Stalwart con workflows de desactivación y grupos sincronizados.
-5. **Monitorización sintética enriquecida:** exponer resultados de `scripts/synthetic-checks.sh` en paneles Grafana y cron programado, incluyendo tiempos de correo extremo a extremo.
-6. **Evolución UX:** seguir el [blueprint de mejoras](docs/BLUEPRINT_MEJORAS.md) para un webmail modular estilo Gmail+, con integraciones nativas a n8n, IA contextual, chat embebido y calendario embebido en la UI.
+1. **Autoservicio ampliado:** extender el panel admin con workflows de altas/bajas delegadas, portal de usuarios y reportes exportables.
+2. **UX omnicanal:** seguir el [blueprint de mejoras](docs/BLUEPRINT_MEJORAS.md) para el webmail modular estilo Gmail+, integrando IA contextual, chat embebido y calendario inline.
+3. **Pruebas de estrés 24/7:** automatizar bancos de pruebas multi-inquilino (JMAP, Matrix, Jitsi) con datos sintéticos y alertas de degradación.
+4. **Kubernetes/Nomad:** empaquetar Helm charts o jobs Nomad reutilizando las imágenes multi-arquitectura generadas por el pipeline.
+5. **Gobierno y cumplimiento:** añadir retención legal, legal-hold y exportaciones firmadas con sellado de tiempo para auditorías externas.
+6. **Ecosistema IA/n8n:** publicar conectores listos para n8n, notebooks de análisis y recetas de automatización basadas en los eventos SCIM y send-router.
 
 ---
 

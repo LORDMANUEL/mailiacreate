@@ -101,11 +101,15 @@ function renderMetrics() {
   lines.push(`synthetic_failures_total ${state.failures}`);
   lines.push('# HELP synthetic_check_status Individual check status (1 ok, 0.5 warn, 0 error)');
   lines.push('# TYPE synthetic_check_status gauge');
+  lines.push('# HELP synthetic_check_duration_milliseconds Duration of individual synthetic checks in milliseconds');
+  lines.push('# TYPE synthetic_check_duration_milliseconds gauge');
   for (const result of state.results) {
     const status = result.status === 'ok' ? 1 : result.status === 'warn' ? 0.5 : 0;
     const name = result.name?.replace(/[^a-zA-Z0-9_]/g, '_') || 'unknown';
     const target = result.target?.replace(/"/g, '') || '';
+    const duration = Number.isFinite(Number(result.durationMs)) ? Number(result.durationMs) : 0;
     lines.push(`synthetic_check_status{check="${name}",target="${target}"} ${status}`);
+    lines.push(`synthetic_check_duration_milliseconds{check="${name}",target="${target}"} ${duration}`);
   }
   return `${lines.join('\n')}\n`;
 }

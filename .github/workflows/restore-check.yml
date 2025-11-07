@@ -28,7 +28,17 @@ jobs:
           for volume in "${volumes[@]}"; do
             docker volume create "$volume" >/dev/null
           done
-          docker run --rm -v stalwart-data:/data alpine sh -c "echo 'hello scim' > /data/test.txt"
+          docker run --rm -v stalwart-data:/data alpine sh -c '
+            mkdir -p /data/tenants/acme.test/users /data/tenants/contoso.test/users /data/tenants/zen.test/users && \
+            echo "acme primary" > /data/tenants/acme.test/users/jane@example.com && \
+            echo "contoso disabled" > /data/tenants/contoso.test/users/ana@example.com && \
+            echo "zen ops" > /data/tenants/zen.test/users/li@example.com && \
+            sha256sum /data/tenants/*/users/* > /data/tenant-checksums.txt'
+
+      - name: Persist baseline checksums
+        run: |
+          docker run --rm -v stalwart-data:/data alpine cat /data/tenant-checksums.txt > before.sha256
+          cat before.sha256
 
       - name: Run backup script
         run: |
@@ -37,19 +47,29 @@ jobs:
 
       - name: Remove sample data
         run: |
-          docker run --rm -v stalwart-data:/data alpine sh -c "rm -f /data/test.txt"
+          docker run --rm -v stalwart-data:/data alpine sh -c "rm -f /data/tenant-checksums.txt /data/tenants/*/users/*"
 
       - name: Restore backup
         run: ./scripts/restore.sh ci-backup
 
       - name: Verify restored content
         run: |
-          docker run --rm -v stalwart-data:/data alpine cat /data/test.txt | grep 'hello scim'
+          docker run --rm -v stalwart-data:/data alpine sh -c 'sha256sum /data/tenants/*/users/* > /data/after.sha256'
+          docker run --rm -v stalwart-data:/data alpine cat /data/after.sha256 > after.sha256
+          diff -u before.sha256 after.sha256
+
+      - name: Validate tenant parity
+        run: |
+          restored_count=$(grep -c '@' after.sha256)
+          if [[ "$restored_count" -lt 3 ]]; then
+            echo "Expected 3 tenant mailboxes, got $restored_count" >&2
+            exit 1
+          fi
 
       - name: Cleanup backup artifacts
         if: always()
         run: |
-          rm -rf ci-backup
+          rm -rf ci-backup before.sha256 after.sha256
           volumes=(
             stalwart-data
             synapse-data
