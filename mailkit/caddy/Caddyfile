@@ -22,10 +22,6 @@ it.{$DOMAIN} {
     reverse_proxy it-panel:3000
 }
 
-api.{$DOMAIN} {
-    reverse_proxy mock-api:3001
-}
-
 router.{$DOMAIN} {
     reverse_proxy send-router:3000
 }

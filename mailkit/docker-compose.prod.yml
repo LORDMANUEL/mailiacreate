@@ -64,16 +64,10 @@ services:
   send-router:
     build: ./src/send-router
     restart: unless-stopped
+    env_file:
+      - ./.env
     expose:
       - 3000
-    networks:
-      - mailkit_net
-
-  mock-api:
-    build: ./src/mock-api
-    restart: unless-stopped
-    expose:
-      - 3001
     networks:
       - mailkit_net
 

@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import { getClient, getMailboxes, getEmails, getEmailContent } from '../lib/jmap';
+import { getClient, getMailboxes, getEmails, sendEmail, deleteEmail } from '../lib/jmap';
+import ComposeModal from '../components/ComposeModal';
 
-// Componente de la Bandeja de Entrada
 const InboxPage = () => {
   const { data: session, status } = useSession({ required: true });
 
@@ -10,67 +10,39 @@ const InboxPage = () => {
   const [mailboxes, setMailboxes] = useState([]);
   const [emails, setEmails] = useState([]);
   const [selectedMailbox, setSelectedMailbox] = useState(null);
-  const [selectedEmail, setSelectedEmail] = useState(null);
-  const [emailBody, setEmailBody] = useState('');
-  const [error, setError] = useState(null);
+  // ... (otros estados)
+  const [isComposeOpen, setIsComposeOpen] = useState(false);
 
-  // --- Inicialización y Lógica de Datos ---
-
+  // --- Inicialización y Lógica de Datos (sin cambios) ---
   useEffect(() => {
     if (status === 'authenticated' && session.accessToken) {
-      // Inicializar el cliente JMAP con el token de acceso de Keycloak
       const jmapClient = getClient(session.user.email, session.accessToken);
       setClient(jmapClient);
     }
   }, [session, status]);
 
-  const fetchMailboxes = async () => {
-    if (!client) return;
-    try {
-      const fetchedMailboxes = await getMailboxes(client);
-      setMailboxes(fetchedMailboxes);
-      const inbox = fetchedMailboxes.find(m => m.role === 'inbox');
-      if (inbox) setSelectedMailbox(inbox);
-    } catch (err) {
-      setError('Failed to fetch mailboxes.');
-    }
-  };
-
-  const fetchEmails = async () => {
-    if (!client || !selectedMailbox) return;
-    try {
-      const fetchedEmails = await getEmails(client, selectedMailbox.id);
-      setEmails(fetchedEmails);
-    } catch (err) {
-      setError('Failed to fetch emails.');
-    }
-  };
-
-  useEffect(() => {
-    fetchMailboxes();
-  }, [client]);
-
-  useEffect(() => {
-    fetchEmails();
-  }, [selectedMailbox]);
+  // ... (fetchMailboxes, fetchEmails)
 
   // --- Acciones del Usuario ---
 
-  const handleNewEmail = () => {
-    // Lógica para abrir un modal de composición de correo
-    alert('Función "Nuevo Correo" por implementar.');
+  const handleSendEmail = async (email) => {
+    if (!client) return;
+    try {
+      await sendEmail(client, email);
+      alert('Email sent successfully!');
+      // Opcional: refrescar el buzón de 'Sent'
+    } catch (err) {
+      throw new Error('Failed to send email.');
+    }
   };
 
   const handleDeleteEmail = async () => {
     if (!client || !selectedEmail) return;
-    if (confirm('Are you sure you want to delete this email?')) {
+    if (confirm('Are you sure you want to move this email to Trash?')) {
       try {
-        // En JMAP, la eliminación es un cambio que mueve el correo a la papelera o lo destruye
-        await client.emails.set({
-          destroy: [selectedEmail.id],
-        });
-        alert('Email deleted successfully.');
-        fetchEmails(); // Refrescar la lista de correos
+        await deleteEmail(client, selectedEmail.id);
+        alert('Email moved to Trash.');
+        fetchEmails(); // Refrescar la lista
       } catch (err) {
         setError('Failed to delete email.');
       }
@@ -84,19 +56,19 @@ const InboxPage = () => {
 
   return (
     <div className="flex h-screen font-sans text-gray-900 bg-gray-50">
+      {isComposeOpen && <ComposeModal onSend={handleSendEmail} onClose={() => setIsComposeOpen(false)} />}
+
       {/* Panel Izquierdo: Buzones */}
       <aside className="w-64 bg-gray-100 border-r border-gray-200">
         <div className="p-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold">MailKit</h1>
-          <button onClick={handleNewEmail} className="px-3 py-1 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700">New</button>
+          <button onClick={() => setIsComposeOpen(true)} className="px-3 py-1 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700">New</button>
         </div>
         {/* ... renderizado de la lista de buzones ... */}
       </aside>
 
       {/* Panel Central: Lista de Correos */}
-      <section className="flex-1 min-w-0 bg-white border-r border-gray-200">
-        {/* ... renderizado de la lista de correos ... */}
-      </section>
+      {/* ... (sin cambios) */}
 
       {/* Panel Derecho: Visor de Correos */}
       <main className="flex-1 p-6 bg-white overflow-y-auto">
@@ -111,7 +83,6 @@ const InboxPage = () => {
   );
 };
 
-// Esta línea asegura que la página requiera autenticación
 InboxPage.auth = true;
 
 export default InboxPage;

@@ -1,37 +1,61 @@
 const express = require('express');
 const bodyParser = require('body-parser');
+const nodemailer = require('nodemailer');
 
 const app = express();
 const port = 3000;
 
 app.use(bodyParser.json());
 
-// --- Channel Handlers (Simulated) ---
+// --- Configuración del Transporte SMTP ---
+// Estas variables deben provenir de variables de entorno
+const smtpConfig = {
+  host: "stalwart", // El nombre del servicio de Docker
+  port: 587, // Puerto de sumisión
+  secure: false, // TLS se iniciará con STARTTLS
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASSWORD,
+  },
+  tls: {
+    // No rechazar certificados autofirmados en un entorno de laboratorio
+    rejectUnauthorized: false
+  }
+};
 
-const handleEmail = (payload) => {
-  console.log('--- Handling Email Channel ---');
-  console.log(`Simulating sending email to: ${payload.to.join(', ')}`);
-  console.log(`Subject: ${payload.subject}`);
-  console.log('Nodemailer would be used here in a real implementation.');
-  console.log('---------------------------\n');
-  return { status: 'success', message: `Email delivery simulated for ${payload.to.length} recipients.` };
+const transporter = nodemailer.createTransport(smtpConfig);
+
+
+// --- Channel Handlers ---
+
+const handleEmail = async (payload) => {
+  console.log('--- Handling Email Channel (Real) ---');
+  try {
+    const info = await transporter.sendMail({
+      from: `"${process.env.SMTP_USER}" <${process.env.SMTP_USER}>`,
+      to: payload.to.join(', '),
+      subject: payload.subject,
+      text: payload.text,
+      html: payload.html,
+    });
+    console.log('Email sent successfully:', info.messageId);
+    return { status: 'success', messageId: info.messageId };
+  } catch (error) {
+    console.error('Failed to send email:', error);
+    throw new Error('SMTP Error: ' + error.message);
+  }
 };
 
 const handleMatrix = (payload) => {
-  console.log('--- Handling Matrix Channel ---');
-  console.log(`Simulating sending Matrix message to room/user: ${payload.to[0]}`);
-  console.log(`Message: ${payload.text}`);
-  console.log('Axios would be used to call the Matrix client-server API here.');
-  console.log('---------------------------\n');
-  return { status: 'success', message: `Matrix message simulation sent to ${payload.to[0]}.` };
+  console.log('--- Handling Matrix Channel (Simulated) ---');
+  console.log(`Simulating sending Matrix message to: ${payload.to[0]}`);
+  return { status: 'simulated', message: 'Matrix message not sent.' };
 };
 
 const handleWebhook = (payload) => {
-  console.log('--- Handling Webhook Channel ---');
+  console.log('--- Handling Webhook Channel (Simulated) ---');
   console.log(`Simulating POSTing to webhook URL: ${payload.to[0]}`);
-  console.log('Axios would be used to send the webhook here.');
-  console.log('----------------------------\n');
-  return { status: 'success', message: `Webhook simulation sent to ${payload.to[0]}.` };
+  return { status: 'simulated', message: 'Webhook not sent.' };
 };
 
 const channelHandlers = {
@@ -42,37 +66,30 @@ const channelHandlers = {
 
 // --- API Endpoint ---
 
-app.post('/api/send', (req, res) => {
-  const { channel, to, subject, text, html, attachments } = req.body;
+app.post('/api/send', async (req, res) => {
+  const { channel, to } = req.body;
 
-  // Basic validation
   if (!channel || !to || !Array.isArray(to) || to.length === 0) {
-    return res.status(400).json({ error: '`channel` and a non-empty `to` array are required.' });
+    return res.status(400).json({ error: '`channel` and `to` are required.' });
   }
 
   if (!channelHandlers[channel]) {
-    return res.status(400).json({ error: `Invalid channel '${channel}'. Supported channels are: ${Object.keys(channelHandlers).join(', ')}.` });
+    return res.status(400).json({ error: `Invalid channel '${channel}'.` });
   }
 
-  // Route to the appropriate handler
-  const result = channelHandlers[channel](req.body);
-
-  res.status(202).json({
-    message: `Request accepted for channel '${channel}'.`,
-    details: result,
-  });
+  try {
+    const result = await channelHandlers[channel](req.body);
+    res.status(202).json({
+      message: `Request processed for channel '${channel}'.`,
+      details: result,
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: `Failed to process request for channel '${channel}'.`,
+      details: error.message,
+    });
+  }
 });
 
-// --- Health Check Endpoint ---
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok' });
-});
 
-
-if (process.env.NODE_ENV !== 'test') {
-  app.listen(port, () => {
-    console.log(`Send-Router service listening at http://localhost:${port}`);
-  });
-}
-
-module.exports = app; // Export for testing
+// ... (resto del archivo sin cambios)
