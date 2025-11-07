@@ -47,16 +47,23 @@ git clone <url_del_repositorio>
 cd mailkit-rust-suite
 ```
 
-### 2. Configurar los Dominios
+### 2. Crear los Archivos de Entorno y Configurar el Dominio
 
-Antes de empezar, necesitas reemplazar todas las instancias de `tudominio.com` con tu dominio real. Esto incluye los archivos de configuración de Caddy y Stalwart.
+El proyecto utiliza archivos `.env` para gestionar las contraseñas y la configuración. El paso más importante es definir tu dominio o IP.
 
-*   `mailkit/caddy/Caddyfile`
-*   `mailkit/stalwart/config.toml`
+```bash
+# Copiar el archivo de entorno principal
+cp mailkit/.env.example mailkit/.env
 
-### 3. Crear los Archivos de Entorno
+# Copiar el archivo de entorno de Jitsi
+cp mailkit/.env.jitsi.example mailkit/.env.jitsi
+```
 
-El proyecto utiliza archivos `.env` para gestionar las contraseñas y la configuración. Se proporcionan archivos de ejemplo.
+Abre `mailkit/.env` y edita la variable `DOMAIN`:
+*   **Para producción:** `DOMAIN=tudominio.com`
+*   **Para pruebas locales:** `DOMAIN=localhost` o `DOMAIN=192.168.1.100`
+
+**Importante:** Edita también el resto de los archivos `.env` y reemplaza las contraseñas `changeme` por valores seguros.
 
 ```bash
 # Copiar el archivo de entorno principal

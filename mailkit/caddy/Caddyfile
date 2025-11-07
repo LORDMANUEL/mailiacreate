@@ -1,43 +1,51 @@
-mail.tudominio.com {
+{
+    # Esta opción global permite a Caddy manejar automáticamente los certificados.
+    # Para dominios públicos, usará Let's Encrypt.
+    # Para localhost o IPs, generará un certificado autofirmado (confía en él en tu navegador).
+    acme_ca https://acme-staging-v02.api.letsencrypt.org/directory
+    email youremail@example.com
+}
+
+mail.{$DOMAIN} {
     reverse_proxy stalwart:8080
 }
 
-webmail.tudominio.com {
+webmail.{$DOMAIN} {
     reverse_proxy webmail:3000
 }
 
-admin.tudominio.com {
+admin.{$DOMAIN} {
     reverse_proxy admin-panel:3000
 }
 
-it.tudominio.com {
+it.{$DOMAIN} {
     reverse_proxy it-panel:3000
 }
 
-api.tudominio.com {
+api.{$DOMAIN} {
     reverse_proxy mock-api:3001
 }
 
-router.tudominio.com {
+router.{$DOMAIN} {
     reverse_proxy send-router:3000
 }
 
-sso.tudominio.com {
+sso.{$DOMAIN} {
     reverse_proxy keycloak:8080
 }
 
-chat.tudominio.com {
+chat.{$DOMAIN} {
     reverse_proxy synapse:8008
 }
 
-element.tudominio.com {
+element.{$DOMAIN} {
     reverse_proxy element:80
 }
 
-meet.tudominio.com {
+meet.{$DOMAIN} {
     reverse_proxy jitsi:80
 }
 
-cloud.tudominio.com {
+cloud.{$DOMAIN} {
     reverse_proxy nextcloud:80
 }

@@ -2,7 +2,7 @@
 # See https://stalwart.at/docs/configuration for more information.
 
 [server]
-hostname = "mail.tudominio.com"
+hostname = "mail.${DOMAIN}"
 
 [data]
 directory = "/data"

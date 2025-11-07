@@ -8,6 +8,8 @@ services:
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
+    env_file:
+      - ./.env
     ports:
       - "80:80"
       - "443:443"
@@ -21,6 +23,8 @@ services:
   stalwart:
     image: stalwartlabs/mail-server:v0.11.8-alpine
     restart: unless-stopped
+    env_file:
+      - ./.env
     ports:
       - "25:25"   # SMTP
       - "465:465" # SMTPS
