@@ -34,6 +34,10 @@
    - *Impacto:* Imposible instalar dependencias desde el registry durante QA automatizada.
    - *Mitigación:* Se documentó la limitación. En entornos con acceso a Internet se debe repetir `npm install` para ambos paneles tras actualizar las dependencias.
 
+3. **Dependencia `@hotjar/browser` con versión inexistente.**
+   - *Impacto:* Los pipelines `npm install` de los tres frontends (admin, IT y webmail) fallaban al solicitar versiones `^1.1.x` que no existen en npm, rompiendo la verificación previa al build.
+   - *Resolución:* Se reemplazó la integración por un cargador inline controlado por variables de entorno y se eliminó la dependencia del `package.json`, lo que estabiliza las instalaciones en entornos conectados.
+
 ## Próximos pasos recomendados
 - Reejecutar `npm install && npm run build` para `services/admin-panel` y `services/it-panel` en un entorno con acceso a npm para confirmar builds productivos.
 - Monitorear la ejecución programada de `scripts/synthetic-checks.sh` (vía `synthetic-exporter`) y revisar los paneles de duración en Grafana para anticipar incidencias de roundtrip correo.
