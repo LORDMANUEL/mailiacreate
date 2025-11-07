@@ -154,7 +154,36 @@ services:
     networks:
       - mailkit_net
 
+  keycloak_db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    volumes:
+      - keycloak_db_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=keycloak
+      - POSTGRES_USER=${KEYCLOAK_DB_USER}
+      - POSTGRES_PASSWORD=${KEYCLOAK_DB_PASSWORD}
+    networks:
+      - mailkit_net
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:22.0
+    restart: unless-stopped
+    command: start-dev
+    environment:
+      - KC_DB=postgres
+      - KC_DB_URL_HOST=keycloak_db
+      - KC_DB_USERNAME=${KEYCLOAK_DB_USER}
+      - KC_DB_PASSWORD=${KEYCLOAK_DB_PASSWORD}
+      - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN_USER}
+      - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}
+    depends_on:
+      - keycloak_db
+    networks:
+      - mailkit_net
+
 volumes:
+  keycloak_db_data:
   caddy_data:
   caddy_config:
   stalwart_data:

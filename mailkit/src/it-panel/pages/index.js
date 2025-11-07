@@ -108,4 +108,5 @@ const ITPanel = () => {
   );
 };
 
+ITPanel.auth = true;
 export default ITPanel;

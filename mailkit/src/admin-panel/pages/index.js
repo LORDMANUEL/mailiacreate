@@ -174,4 +174,5 @@ const AdminPanel = () => {
   );
 };
 
+AdminPanel.auth = true;
 export default AdminPanel;

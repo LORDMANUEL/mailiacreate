@@ -22,6 +22,10 @@ router.tudominio.com {
     reverse_proxy send-router:3000
 }
 
+sso.tudominio.com {
+    reverse_proxy keycloak:8080
+}
+
 chat.tudominio.com {
     reverse_proxy synapse:8008
 }

@@ -94,7 +94,38 @@ Algunos servicios requieren una configuración única después del primer inicio
 
 *   **Nextcloud:** Navega a `https://cloud.tudominio.com` y sigue las instrucciones en `mailkit/docs/nextcloud_setup.md`.
 *   **Matrix Synapse:** Sigue las instrucciones en `mailkit/docs/synapse_setup.md` para generar la configuración inicial.
-*   **Jitsi Meet:** La configuración se gestiona a través del archivo `.env.jitsi`, pero consulta `mailkit/docs/jitsi_setup.md` para más detalles.
+*   **Jitsi Meet:** La configuración se gestiona a través del archivo `.env.jitsi`.
+*   **Keycloak (SSO):** Se requiere una configuración inicial manual después del primer despliegue.
+
+### Configuración Inicial de Keycloak
+
+Después de desplegar la suite por primera vez, necesitas configurar Keycloak para la gestión de usuarios y la seguridad de las aplicaciones.
+
+1.  **Accede a la Consola de Administración:**
+    *   Navega a `https://sso.tudominio.com`.
+    *   Inicia sesión con el usuario administrador que definiste en tu archivo `.env` (`KEYCLOAK_ADMIN_USER` y `KEYCLOAK_ADMIN_PASSWORD`).
+
+2.  **Crea un Nuevo Realm:**
+    *   En la esquina superior izquierda, haz clic en "master" y luego en "Create Realm".
+    *   Nombra el realm `mailkit` y haz clic en "Create".
+
+3.  **Configura Clientes OIDC para las Aplicaciones:**
+    *   Asegúrate de estar en el realm `mailkit`.
+    *   Ve a "Clients" y haz clic en "Create client".
+    *   Crea un cliente para el **Panel de Administración**:
+        *   **Client ID:** `admin-panel`
+        *   **Valid Redirect URIs:** `https://admin.tudominio.com/*`
+        *   **Web Origins:** `https://admin.tudominio.com`
+    *   Guarda el cliente. Repite el proceso para el **Panel de TI** (`it-panel`).
+
+4.  **Crea Roles de Aplicación:**
+    *   Ve a "Clients", selecciona `admin-panel`.
+    *   Ve a la pestaña "Roles" y crea roles como `admin` y `helpdesk`.
+
+5.  **Crea Usuarios:**
+    *   Ve a "Users" y crea nuevos usuarios.
+    *   En la pestaña "Credentials", establece una contraseña para cada usuario.
+    *   En la pestaña "Role mapping", asigna los roles que creaste.
 
 ## Gestión de Copias de Seguridad
 
@@ -112,3 +143,36 @@ El proyecto incluye scripts para realizar copias de seguridad y restauraciones d
     ```
 
 Las copias de seguridad se almacenan en la carpeta `mailkit/backups`.
+
+## Mantenimiento y Solución de Problemas
+
+### Ver Registros (Logs)
+
+Para ver los registros de todos los servicios en tiempo real, puedes usar el siguiente comando:
+
+```bash
+sudo docker compose -f mailkit/docker-compose.prod.yml logs -f
+```
+
+Para ver los registros de un servicio específico (por ejemplo, `stalwart`):
+
+```bash
+sudo docker compose -f mailkit/docker-compose.prod.yml logs -f stalwart
+```
+
+### Rotación de Claves DKIM
+
+Se recomienda rotar tus claves DKIM periódicamente. Para ello:
+1.  Genera un nuevo par de claves con un selector diferente (por ejemplo, `selector2`).
+2.  Añade una nueva entrada `[[dkim]]` en `mailkit/stalwart/config.toml` con el nuevo selector.
+3.  Publica el nuevo registro TXT de DKIM en tu DNS.
+4.  Reinicia el servicio de Stalwart: `sudo docker compose -f mailkit/docker-compose.prod.yml restart stalwart`.
+5.  Después de un tiempo, puedes eliminar la clave antigua.
+
+### Actualización de los Servicios
+
+Para actualizar las imágenes de Docker a sus últimas versiones:
+
+1.  Detén los servicios: `sudo docker compose -f mailkit/docker-compose.prod.yml down`.
+2.  Obtén las últimas imágenes: `sudo docker compose -f mailkit/docker-compose.prod.yml pull`.
+3.  Vuelve a iniciar los servicios: `./deploy.sh`.
