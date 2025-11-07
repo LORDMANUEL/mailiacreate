@@ -7,13 +7,8 @@ const sentryUploadsEnabled = Boolean(
   process.env.SENTRY_PROJECT
 );
 
-const nextConfig = {
+const baseConfig = {
   output: 'standalone',
-  sentry: {
-    hideSourceMaps: true,
-    disableServerWebpackPlugin: !sentryUploadsEnabled,
-    disableClientWebpackPlugin: !sentryUploadsEnabled
-  },
   env: {
     NEXT_PUBLIC_MIXPANEL_TOKEN: process.env.NEXT_PUBLIC_MIXPANEL_TOKEN,
     NEXT_PUBLIC_HOTJAR_SITE_ID: process.env.NEXT_PUBLIC_HOTJAR_SITE_ID,
@@ -23,7 +18,18 @@ const nextConfig = {
   }
 };
 
-export default withSentryConfig(nextConfig, {
-  silent: true,
-  dryRun: !sentryUploadsEnabled
-});
+const config = sentryUploadsEnabled
+  ? withSentryConfig(
+      {
+        ...baseConfig,
+        sentry: {
+          hideSourceMaps: true
+        }
+      },
+      {
+        silent: true
+      }
+    )
+  : baseConfig;
+
+export default config;

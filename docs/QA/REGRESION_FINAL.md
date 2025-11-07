@@ -40,7 +40,11 @@
 
 4. **Build Next.js bloqueado por configuración incompleta de Sentry.**
    - *Impacto:* `npm run build` detenía la tubería con el error `No Sentry organization slug configured` y avisos por falta de `global-error.tsx`, debido a que el plugin intentaba subir sourcemaps sin credenciales y no existía un manejador global para capturar los fallos de React.
-   - *Resolución:* Se desactivó automáticamente el plugin de subida de sourcemaps cuando faltan `SENTRY_AUTH_TOKEN/SENTRY_ORG/SENTRY_PROJECT`, se añadieron handlers globales (`app/global-error.tsx`) y se inicializó la instrumentación Edge sólo cuando existen DSN configurados, dejando el build libre de fallos en entornos sin telemetría.
+   - *Resolución:* Se desactivó el wrapper de Sentry cuando faltan `SENTRY_AUTH_TOKEN/SENTRY_ORG/SENTRY_PROJECT`, se añadieron handlers globales (`app/global-error.tsx`) y la instrumentación Edge/Server/Client ahora sólo se inicializa si existe DSN, dejando el build libre de fallos en entornos sin telemetría.
+
+5. **Rutas NextAuth incompatibles con los tipos del App Router.**
+   - *Impacto:* `next build` detenía la compilación indicando que `app/api/auth/[...nextauth]/route.ts` no coincidía con las firmas `GET/POST` esperadas.
+   - *Resolución:* Las rutas ahora importan los `handlers` compartidos (`lib/auth`) y exponen `export const GET/POST`, cumpliendo con la definición oficial de NextAuth v5 para el App Router.
 
 ## Próximos pasos recomendados
 - Reejecutar `npm install && npm run build` para `services/admin-panel` y `services/it-panel` en un entorno con acceso a npm para confirmar builds productivos.

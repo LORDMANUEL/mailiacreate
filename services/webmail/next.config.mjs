@@ -7,7 +7,7 @@ const sentryUploadsEnabled = Boolean(
   process.env.SENTRY_PROJECT
 );
 
-const nextConfig = {
+const baseConfig = {
   reactStrictMode: true,
   experimental: {
     typedRoutes: true
@@ -18,17 +18,23 @@ const nextConfig = {
       { protocol: 'https', hostname: 'secure.gravatar.com' }
     ]
   },
-  sentry: {
-    hideSourceMaps: true,
-    disableServerWebpackPlugin: !sentryUploadsEnabled,
-    disableClientWebpackPlugin: !sentryUploadsEnabled
-  },
   env: {
     NEXT_PUBLIC_APP_NAME: 'MailiaCreate Webmail'
   }
 };
 
-export default withSentryConfig(nextConfig, {
-  silent: true,
-  dryRun: !sentryUploadsEnabled
-});
+const config = sentryUploadsEnabled
+  ? withSentryConfig(
+      {
+        ...baseConfig,
+        sentry: {
+          hideSourceMaps: true
+        }
+      },
+      {
+        silent: true
+      }
+    )
+  : baseConfig;
+
+export default config;
