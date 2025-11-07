@@ -2,7 +2,6 @@
 
 import { useEffect } from 'react';
 import mixpanel from 'mixpanel-browser';
-import { hotjar } from '@hotjar/browser';
 
 const MIXPANEL_TOKEN = process.env.NEXT_PUBLIC_MIXPANEL_TOKEN || '';
 const HOTJAR_SITE_ID = process.env.NEXT_PUBLIC_HOTJAR_SITE_ID || '';
@@ -19,9 +18,43 @@ export default function AnalyticsProvider() {
     }
 
     if (HOTJAR_SITE_ID) {
-      hotjar.init(Number(HOTJAR_SITE_ID), HOTJAR_VERSION);
+      initHotjar(Number(HOTJAR_SITE_ID), HOTJAR_VERSION);
     }
   }, []);
 
   return null;
+}
+
+function initHotjar(siteId: number, version: number) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  const win = window as typeof window & {
+    hj?: ((...args: unknown[]) => void) & { q?: unknown[][] };
+    _hjSettings?: { hjid: number; hjsv: number };
+  };
+
+  if (win.hj) {
+    return;
+  }
+
+  const queue: unknown[][] = [];
+  const hotjarFn = ((...args: unknown[]) => {
+    queue.push(args);
+  }) as typeof win.hj;
+
+  win.hj = Object.assign(hotjarFn, { q: queue });
+  win._hjSettings = { hjid: siteId, hjsv: version };
+
+  const head = document.head;
+  if (!head || head.querySelector(`script[data-hotjar="${siteId}"]`)) {
+    return;
+  }
+
+  const script = document.createElement('script');
+  script.async = true;
+  script.dataset.hotjar = String(siteId);
+  script.src = `https://static.hotjar.com/c/hotjar-${siteId}.js?sv=${version}`;
+  head.appendChild(script);
 }

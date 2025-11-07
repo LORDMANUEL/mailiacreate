@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@headlessui/react": "^1.7.19",
-    "@hotjar/browser": "^1.0.12",
     "@sentry/nextjs": "^7.103.0",
     "@tailwindcss/forms": "^0.5.7",
     "@tailwindcss/typography": "^0.5.10",
