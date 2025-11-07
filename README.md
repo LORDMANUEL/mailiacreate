@@ -66,6 +66,13 @@ MailiaCreate es una plataforma de correo y colaboración empresarial lista para 
 - **Monitoreo sintético** continuo con exportador Prometheus y alertas listas para ejecutar.
 - **Analítica de experiencia** con Sentry (frontend/backend), Mixpanel y Hotjar para medir uso real y detectar errores temprano.
 
+### Telemetría y analítica integradas
+
+- **Sentry unificado:** cada microservicio Node.js y los paneles Next.js reportan excepciones, trazas y performance con etiquetas comunes (`deployment`, `mode`).
+- **Mixpanel y Hotjar:** activados desde el instalador para mapear adopción de funcionalidades, embudos y mapas de calor sin configuración manual posterior.
+- **Prometheus y Grafana:** métricas de correo, colas, IA, SCIM y chequeos sintéticos con dashboards preconfigurados y alertas para degradaciones.
+- **Exportador sintético:** transforma los resultados de `scripts/synthetic-checks.sh` en series Prometheus con tiempos extremo a extremo (correo, Matrix, Jitsi).
+
 ### Experiencia “clonar y ejecutar”
 
 1. `git clone <repo>`
@@ -145,14 +152,25 @@ Cada fase del roadmap cuenta con su propio informe QA (`docs/QA/FASE*.md`), lo q
 
 ## Mejoras continuas recomendadas
 
-El proyecto está listo para producción, pero se documentan iniciativas para seguir madurando la operación:
+El proyecto está listo para producción, pero se mantiene un **backlog activo** con los siguientes focos de evolución:
 
-1. **Autoservicio ampliado:** extender el panel admin con workflows de altas/bajas delegadas, portal de usuarios y reportes exportables.
-2. **UX omnicanal:** seguir el [blueprint de mejoras](docs/BLUEPRINT_MEJORAS.md) para el webmail modular estilo Gmail+, integrando IA contextual, chat embebido y calendario inline.
-3. **Pruebas de estrés 24/7:** automatizar bancos de pruebas multi-inquilino (JMAP, Matrix, Jitsi) con datos sintéticos y alertas de degradación.
-4. **Kubernetes/Nomad:** empaquetar Helm charts o jobs Nomad reutilizando las imágenes multi-arquitectura generadas por el pipeline.
-5. **Gobierno y cumplimiento:** añadir retención legal, legal-hold y exportaciones firmadas con sellado de tiempo para auditorías externas.
-6. **Ecosistema IA/n8n:** publicar conectores listos para n8n, notebooks de análisis y recetas de automatización basadas en los eventos SCIM y send-router.
+### Experiencia de usuario
+
+1. **Webmail modular estilo Gmail+** siguiendo el [blueprint de mejoras](docs/BLUEPRINT_MEJORAS.md): panel de resumen unificado, chat y calendario embebidos, firmas dinámicas y colaboración en tiempo real.
+2. **Add-ons y automatizaciones**: catálogos plug-and-play para n8n, asistentes IA dentro del webmail y workflows de revisión/aprobación multi-canal.
+
+### Operaciones y confiabilidad
+
+3. **Pruebas de estrés 24/7** con cargas multi-inquilino para JMAP, Matrix, Jitsi y Nextcloud, alimentadas por `scripts/synthetic-checks.sh` en modo cronometrado.
+4. **Orquestación avanzada**: empaquetar Helm charts / Nomad jobs y habilitar despliegues híbridos activo-activo con el `docker-compose.ha.yml` como base de referencia.
+5. **Gobierno y cumplimiento**: retención legal, legal-hold, exportaciones con sellado de tiempo y reportes de cumplimiento automatizados.
+
+### Identidad y datos
+
+6. **Automatización SCIM continua**: extender el bridge para soportar ciclos de vida complejos (bajas temporales, grupos jerárquicos, dominios múltiples) y auditar cambios en Grafana.
+7. **Ecosistema de datos**: exponer catálogos de eventos (SCIM, send-router, synthetic) en warehouses externos y publicar conectores oficiales.
+
+> Cada iniciativa cuenta con historias de usuario y lineamientos técnicos en [`docs/BLUEPRINT_MEJORAS.md`](docs/BLUEPRINT_MEJORAS.md) y en la sección de próximos pasos del plan de desarrollo.
 
 ---
 
