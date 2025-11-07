@@ -1,0 +1,25 @@
+[server]
+hostname = "mail.example.com"
+
+[[server.listener]]
+protocols = ["jmap", "webdav", "admin"]
+address = "0.0.0.0:8080"
+
+[smtp]
+hostname = "mail.example.com"
+submission_address = "0.0.0.0:587"
+
+domain = "example.com"
+
+[authentication]
+strategy = "internal"
+
+[storage]
+provider = "sqlite"
+path = "/data/stalwart.db"
+
+[queue]
+path = "/queue"
+
+[spam]
+engine = "builtin"

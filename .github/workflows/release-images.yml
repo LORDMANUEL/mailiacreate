@@ -1,0 +1,135 @@
+name: Build and sign production images
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_PREFIX: ${{ github.repository_owner }}/mailiacreate
+    strategy:
+      matrix:
+        include:
+          - name: admin-panel
+            context: services/admin-panel
+            dockerfile: services/admin-panel/Dockerfile
+          - name: it-panel
+            context: services/it-panel
+            dockerfile: services/it-panel/Dockerfile
+          - name: send-router
+            context: services/send-router
+            dockerfile: services/send-router/Dockerfile
+          - name: ai-orchestrator
+            context: services/ai-orchestrator
+            dockerfile: services/ai-orchestrator/Dockerfile
+          - name: restic-scheduler
+            context: services/restic-scheduler
+            dockerfile: services/restic-scheduler/Dockerfile
+          - name: scim-bridge
+            context: services/scim-bridge
+            dockerfile: services/scim-bridge/Dockerfile
+          - name: synthetic-exporter
+            context: .
+            dockerfile: services/synthetic-exporter/Dockerfile
+          - name: webmail
+            context: services/webmail
+            dockerfile: services/webmail/Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract version
+        id: meta
+        run: |
+          VERSION=${GITHUB_REF##*/}
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Build and push ${{ matrix.name }}
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          platforms: linux/amd64,linux/arm64,linux/arm64/v8
+          sbom: true
+          provenance: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-${{ matrix.name }}:${{ steps.meta.outputs.version }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-${{ matrix.name }}:latest
+
+      - name: Install Cosign
+        if: ${{ secrets.COSIGN_PRIVATE_KEY != '' }}
+        uses: sigstore/cosign-installer@v3.4.0
+
+      - name: Sign ${{ matrix.name }}
+        if: ${{ secrets.COSIGN_PRIVATE_KEY != '' }}
+        env:
+          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+        run: |
+          cosign sign --key env://COSIGN_PRIVATE_KEY \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-${{ matrix.name }}:${{ steps.meta.outputs.version }}
+          cosign sign --key env://COSIGN_PRIVATE_KEY \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-${{ matrix.name }}:latest
+
+  arm-smoke:
+    name: ARM64/v8 smoke tests
+    runs-on: ubuntu-22.04-arm
+    needs: build
+    permissions:
+      contents: read
+      packages: read
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_PREFIX: ${{ github.repository_owner }}/mailiacreate
+      VERSION: ${{ needs.build.outputs.version }}
+    strategy:
+      matrix:
+        service:
+          - admin-panel
+          - it-panel
+          - send-router
+          - ai-orchestrator
+          - restic-scheduler
+          - scim-bridge
+          - synthetic-exporter
+          - webmail
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Authenticate with GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull image
+        run: |
+          docker pull --platform linux/arm64/v8 \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-${{ matrix.service }}:${{ env.VERSION }}
+
+      - name: Smoke test entrypoint
+        run: |
+          docker run --rm --platform linux/arm64/v8 \
+            --entrypoint node \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-${{ matrix.service }}:${{ env.VERSION }} \
+            --version

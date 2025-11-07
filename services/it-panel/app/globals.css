@@ -1,0 +1,10 @@
+body {
+  margin: 0;
+  background-color: #020617;
+  color: #e2e8f0;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+a {
+  color: #38bdf8;
+}

@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-primary: 220 90% 56%;
+  --color-primary-foreground: 0 0% 100%;
+  --color-background: 210 20% 98%;
+  --color-foreground: 222 47% 11%;
+  --color-muted: 215 16% 90%;
+  --color-muted-foreground: 222 15% 35%;
+  --color-accent: 12 94% 62%;
+  color-scheme: light;
+}
+
+:root.dark {
+  --color-primary: 220 90% 70%;
+  --color-primary-foreground: 222 47% 11%;
+  --color-background: 222 47% 11%;
+  --color-foreground: 210 20% 98%;
+  --color-muted: 220 14% 20%;
+  --color-muted-foreground: 214 15% 70%;
+  --color-accent: 23 92% 65%;
+  color-scheme: dark;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: hsl(var(--color-background));
+  color: hsl(var(--color-foreground));
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: hsla(var(--color-foreground), 0.2);
+  border-radius: 9999px;
+}
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+}

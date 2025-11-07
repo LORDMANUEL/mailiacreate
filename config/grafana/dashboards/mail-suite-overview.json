@@ -1,0 +1,193 @@
+{
+  "id": null,
+  "uid": "mail-suite-overview",
+  "title": "MailiaCreate Overview",
+  "tags": [
+    "mailiacreate"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "SMTP Queue Length",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "stalwart_smtp_queue_length",
+          "legendFormat": "Queue",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "JMAP Latency",
+      "gridPos": {
+        "x": 6,
+        "y": 0,
+        "w": 18,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "rate(stalwart_jmap_request_duration_seconds_sum[5m]) / rate(stalwart_jmap_request_duration_seconds_count[5m])",
+          "legendFormat": "latency",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "logs",
+      "title": "Recent Errors",
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 24,
+        "h": 9
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "targets": [
+        {
+          "expr": "{level=~\"error|warning\"}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Send-Router Throughput",
+      "gridPos": {
+        "x": 0,
+        "y": 17,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "expr": "increase(send_router_jobs_completed_total[5m])",
+          "legendFormat": "Completados",
+          "refId": "A"
+        },
+        {
+          "expr": "increase(send_router_jobs_failed_total[5m])",
+          "legendFormat": "Fallidos",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "AI Risk Average",
+      "gridPos": {
+        "x": 12,
+        "y": 17,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "expr": "ai_orchestrator_risk_score_sum / clamp_min(ai_orchestrator_risk_score_count, 1)",
+          "legendFormat": "Riesgo promedio",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Send-Router Sentry Events",
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "expr": "increase(send_router_sentry_events_total[5m])",
+          "legendFormat": "{{source}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "AI Orchestrator Sentry Events",
+      "gridPos": {
+        "x": 12,
+        "y": 24,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "expr": "increase(ai_orchestrator_sentry_events_total[5m])",
+          "legendFormat": "{{source}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Synthetic Overall Health",
+      "gridPos": {
+        "x": 0,
+        "y": 31,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "synthetic_overall_status",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Synthetic Check Durations",
+      "gridPos": {
+        "x": 6,
+        "y": 31,
+        "w": 18,
+        "h": 7
+      },
+      "targets": [
+        {
+          "expr": "synthetic_check_duration_milliseconds",
+          "legendFormat": "{{check}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": {
+            "lineWidth": 2
+          }
+        },
+        "overrides": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  email {$ADMIN_EMAIL}
+  acme_ca https://acme-v02.api.letsencrypt.org/directory
+}
+
+(header-security) {
+  header {
+    Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    X-Content-Type-Options "nosniff"
+    X-Frame-Options "SAMEORIGIN"
+    Referrer-Policy "strict-origin-when-cross-origin"
+    Permissions-Policy "camera=(), microphone=(), geolocation=()"
+    Content-Security-Policy "default-src 'self'; img-src 'self' data: https:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https: wss:; frame-ancestors 'self'; form-action 'self'"
+  }
+}
+
+{$MAIL_FQDN} {
+  import header-security
+  encode gzip
+  tls {
+    on_demand
+  }
+
+  handle_path /jmap* {
+    reverse_proxy stalwart:8080
+  }
+
+  handle_path /admin* {
+    reverse_proxy admin-panel:3000
+  }
+
+  handle_path /it* {
+    reverse_proxy it-panel:3000
+  }
+
+  handle_path /scim* {
+    reverse_proxy scim-bridge:8089
+  }
+
+  handle {
+    reverse_proxy webmail:3000
+  }
+}
+
+{$CHAT_FQDN} {
+  import header-security
+  reverse_proxy element:80
+}
+
+{$MATRIX_FQDN} {
+  import header-security
+  reverse_proxy synapse:8008
+}
+
+{$SSO_FQDN} {
+  import header-security
+  reverse_proxy keycloak:8080
+}
+
+{$MEET_FQDN} {
+  import header-security
+  reverse_proxy jitsi-web:80
+}
+
+{$CLOUD_FQDN} {
+  import header-security
+  reverse_proxy nextcloud:80
+}
+
+{$GRAFANA_FQDN} {
+  import header-security
+  reverse_proxy grafana:3000
+}

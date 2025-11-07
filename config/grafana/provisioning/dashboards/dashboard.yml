@@ -1,0 +1,10 @@
+apiversion: 1
+
+providers:
+  - name: mail-suite
+    orgId: 1
+    folder: MailiaCreate
+    type: file
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards

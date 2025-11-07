@@ -1,0 +1,418 @@
+version: "3.9"
+
+x-shared-env: &shared-env
+  TZ: "UTC"
+  LOG_LEVEL: "info"
+  PUBLIC_SCHEME: "${PUBLIC_SCHEME:-https}"
+  SENTRY_DSN: "${SENTRY_DSN:-}"
+  SENTRY_ENVIRONMENT: "${SENTRY_ENVIRONMENT:-production}"
+  SENTRY_TRACES_SAMPLE_RATE: "${SENTRY_TRACES_SAMPLE_RATE:-0.1}"
+
+services:
+  caddy:
+    image: caddy:2.7-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ../config/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    environment:
+      ADMIN_EMAIL: "${ADMIN_EMAIL}"
+      MAIL_FQDN: "${MAIL_FQDN}"
+      CHAT_FQDN: "${CHAT_FQDN}"
+      MATRIX_FQDN: "${MATRIX_FQDN}"
+      SSO_FQDN: "${SSO_FQDN}"
+      MEET_FQDN: "${MEET_FQDN}"
+      CLOUD_FQDN: "${CLOUD_FQDN}"
+      GRAFANA_FQDN: "${GRAFANA_FQDN}"
+    depends_on:
+      - stalwart
+      - webmail
+      - admin-panel
+      - it-panel
+      - keycloak
+      - element
+      - jitsi-web
+      - nextcloud
+      - prometheus
+
+  stalwart:
+    image: stalwartlabs/mail-server:latest
+    restart: unless-stopped
+    environment:
+      <<: *shared-env
+    volumes:
+      - stalwart-data:/data
+      - ../config/stalwart/config.toml:/config/config.toml:ro
+    ports:
+      - "25:25"
+      - "465:465"
+      - "587:587"
+      - "993:993"
+
+  webmail:
+    build:
+      context: ../services/webmail
+    restart: unless-stopped
+    environment:
+      <<: *shared-env
+      WEBMAIL_JMAP_BASE_URL: "http://stalwart:8080"
+      WEBMAIL_JMAP_USERNAME: "admin"
+      WEBMAIL_JMAP_PASSWORD: "change_me"
+      WEBMAIL_MATRIX_BASE_URL: "http://synapse:8008"
+      WEBMAIL_MATRIX_ACCESS_TOKEN: "${WEBMAIL_MATRIX_ACCESS_TOKEN:-}"
+      WEBMAIL_MATRIX_ROOM_ID: "${WEBMAIL_MATRIX_ROOM_ID:-}"
+      WEBMAIL_MATRIX_USER_ID: "${WEBMAIL_MATRIX_USER_ID:-}"
+      MATRIX_TEAM_IDS: "${MATRIX_TEAM_IDS:-}"
+      WEBMAIL_NEXTCLOUD_CALDAV_URL: "${WEBMAIL_NEXTCLOUD_CALDAV_URL:-}"
+      WEBMAIL_NEXTCLOUD_TASKS_URL: "${WEBMAIL_NEXTCLOUD_TASKS_URL:-}"
+      WEBMAIL_NEXTCLOUD_USERNAME: "${WEBMAIL_NEXTCLOUD_USERNAME:-}"
+      WEBMAIL_NEXTCLOUD_PASSWORD: "${WEBMAIL_NEXTCLOUD_PASSWORD:-}"
+      NEXT_PUBLIC_SENTRY_DSN: "${NEXT_PUBLIC_SENTRY_DSN:-}"
+      NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE: "${NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE:-0.1}"
+      NEXT_PUBLIC_MIXPANEL_TOKEN: "${NEXT_PUBLIC_MIXPANEL_TOKEN:-}"
+      NEXT_PUBLIC_HOTJAR_SITE_ID: "${NEXT_PUBLIC_HOTJAR_SITE_ID:-}"
+      NEXT_PUBLIC_HOTJAR_VERSION: "${NEXT_PUBLIC_HOTJAR_VERSION:-6}"
+    depends_on:
+      - stalwart
+
+  admin-panel:
+    build:
+      context: ../services/admin-panel
+    restart: unless-stopped
+    environment:
+      <<: *shared-env
+      NEXTAUTH_URL: "${PUBLIC_SCHEME}://${MAIL_FQDN}/admin"
+      KEYCLOAK_ISSUER: "${PUBLIC_SCHEME}://${SSO_FQDN}/realms/${KEYCLOAK_REALM:-mailiacreate}"
+      KEYCLOAK_CLIENT_ID: "${KEYCLOAK_ADMIN_CLIENT_ID:-mail-suite-admin}"
+      KEYCLOAK_CLIENT_SECRET: "${KEYCLOAK_ADMIN_CLIENT_SECRET:-change_me}"
+      STALWART_ADMIN_URL: "http://stalwart:8080/admin"
+      STALWART_ADMIN_USER: "admin"
+      STALWART_ADMIN_PASSWORD: "change_me"
+      NEXT_PUBLIC_SENTRY_DSN: "${NEXT_PUBLIC_SENTRY_DSN:-}"
+      NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE: "${NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE:-0.1}"
+      NEXT_PUBLIC_MIXPANEL_TOKEN: "${NEXT_PUBLIC_MIXPANEL_TOKEN:-}"
+      NEXT_PUBLIC_HOTJAR_SITE_ID: "${NEXT_PUBLIC_HOTJAR_SITE_ID:-}"
+      NEXT_PUBLIC_HOTJAR_VERSION: "${NEXT_PUBLIC_HOTJAR_VERSION:-6}"
+    depends_on:
+      - keycloak
+      - stalwart
+
+  it-panel:
+    build:
+      context: ../services/it-panel
+    restart: unless-stopped
+    environment:
+      <<: *shared-env
+      NEXTAUTH_URL: "${PUBLIC_SCHEME}://${MAIL_FQDN}/it"
+      KEYCLOAK_ISSUER: "${PUBLIC_SCHEME}://${SSO_FQDN}/realms/${KEYCLOAK_REALM:-mailiacreate}"
+      KEYCLOAK_CLIENT_ID: "${KEYCLOAK_IT_CLIENT_ID:-mail-suite-it}"
+      KEYCLOAK_CLIENT_SECRET: "${KEYCLOAK_IT_CLIENT_SECRET:-change_me}"
+      PROMETHEUS_URL: "http://prometheus:9090"
+      LOKI_URL: "http://loki:3100"
+      RESTIC_STATUS_URL: "http://restic-scheduler:8000/status"
+      NEXT_PUBLIC_SENTRY_DSN: "${NEXT_PUBLIC_SENTRY_DSN:-}"
+      NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE: "${NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE:-0.1}"
+      NEXT_PUBLIC_MIXPANEL_TOKEN: "${NEXT_PUBLIC_MIXPANEL_TOKEN:-}"
+      NEXT_PUBLIC_HOTJAR_SITE_ID: "${NEXT_PUBLIC_HOTJAR_SITE_ID:-}"
+      NEXT_PUBLIC_HOTJAR_VERSION: "${NEXT_PUBLIC_HOTJAR_VERSION:-6}"
+    depends_on:
+      - grafana
+      - prometheus
+      - loki
+
+  send-router:
+    build:
+      context: ../services/send-router
+    restart: unless-stopped
+    environment:
+      <<: *shared-env
+      PORT: 4000
+      SEND_ROUTER_STORAGE: "minio"
+      SEND_ROUTER_REDIS_HOST: send-router-redis
+      SEND_ROUTER_REDIS_PORT: 6379
+      SEND_ROUTER_MAX_ATTEMPTS: 6
+      SEND_ROUTER_BACKOFF_MS: 5000
+      SEND_ROUTER_SMTP_HOST: stalwart
+      SEND_ROUTER_SMTP_PORT: 587
+      SEND_ROUTER_SMTP_FROM: "no-reply@${MAIL_DOMAIN}"
+      SEND_ROUTER_S3_ENDPOINT: "http://minio:9000"
+      SEND_ROUTER_S3_BUCKET: "mailiacreate"
+      SEND_ROUTER_S3_ACCESS_KEY: "${MINIO_ROOT_USER:-mailiacreate}"
+      SEND_ROUTER_S3_SECRET_KEY: "${MINIO_ROOT_PASSWORD:-change_me}"
+      SEND_ROUTER_S3_FORCE_PATH_STYLE: "true"
+      SEND_ROUTER_AI_URL: "http://ai-orchestrator:4100"
+      SEND_ROUTER_AI_THRESHOLD: 0.75
+      SEND_ROUTER_AI_ENFORCE: "false"
+      SEND_ROUTER_WEBHOOK_TOKEN: "${SEND_ROUTER_WEBHOOK_TOKEN:-changeme}"
+      
+    ports:
+      - "4000:4000"
+    depends_on:
+      - send-router-redis
+      - ai-orchestrator
+      - minio
+      - stalwart
+
+  send-router-redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["--save", "60", "1", "--loglevel", "warning"]
+    volumes:
+      - send-router-redis-data:/data
+
+  ai-orchestrator:
+    build:
+      context: ../services/ai-orchestrator
+    restart: unless-stopped
+    environment:
+      <<: *shared-env
+      PORT: 4100
+
+  minio:
+    image: minio/minio:RELEASE.2024-07-26T00-00-00Z
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-mailiacreate}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-change_me}
+    command: ["server", "/data", "--console-address", ":9001"]
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0
+    restart: unless-stopped
+    environment:
+      <<: *shared-env
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: change_me
+      KC_PROXY: edge
+      KC_DB: dev-file
+    command: ["start-dev", "--http-enabled", "true", "--hostname", "${SSO_FQDN}", "--http-port", "8080"]
+    ports:
+      - "8080:8080"
+
+  grafana:
+    image: grafana/grafana:10.4.3
+    restart: unless-stopped
+    environment:
+      <<: *shared-env
+      GF_SERVER_ROOT_URL: "${PUBLIC_SCHEME}://${GRAFANA_FQDN}"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ../config/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ../config/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ../config/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+      - loki
+
+  loki:
+    image: grafana/loki:3.1.1
+    restart: unless-stopped
+    command: ["-config.file=/etc/loki/local-config.yaml"]
+    ports:
+      - "3100:3100"
+    volumes:
+      - ../config/loki/local-config.yaml:/etc/loki/local-config.yaml:ro
+      - loki-data:/loki
+
+  promtail:
+    image: grafana/promtail:3.1.1
+    restart: unless-stopped
+    command: ["-config.file=/etc/promtail/config.yml"]
+    volumes:
+      - ../config/promtail/config.yml:/etc/promtail/config.yml:ro
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+
+  element:
+    image: vectorim/element-web:latest
+    restart: unless-stopped
+    environment:
+      <<: *shared-env
+      DOMAIN: ${CHAT_FQDN}
+    depends_on:
+      - synapse
+
+  synapse:
+    image: matrixdotorg/synapse:latest
+    restart: unless-stopped
+    environment:
+      <<: *shared-env
+      SYNAPSE_SERVER_NAME: ${MATRIX_FQDN}
+      SYNAPSE_REPORT_STATS: "no"
+      SYNAPSE_CONFIG_PATH: /data/homeserver.yaml
+      SYNAPSE_REGISTRATION_SHARED_SECRET: ${MATRIX_REGISTRATION_SHARED_SECRET:-supersecret}
+      SYNAPSE_METRICS_PORT: 9090
+      SYNAPSE_METRICS_INTERFACE: 0.0.0.0
+    volumes:
+      - synapse-data:/data
+      - ../config/synapse/homeserver.yaml:/data/homeserver.yaml:ro
+      - ../config/synapse/log.yaml:/data/log.yaml:ro
+
+  jitsi-web:
+    image: jitsi/web:stable-9230
+    restart: unless-stopped
+    environment:
+      <<: *shared-env
+      PUBLIC_URL: "${PUBLIC_SCHEME}://${MEET_FQDN}"
+    ports:
+      - "4443:4443"
+      - "10000:10000/udp"
+
+  nextcloud:
+    image: nextcloud:29-apache
+    restart: unless-stopped
+    environment:
+      <<: *shared-env
+      NEXTCLOUD_ADMIN_USER: ${NEXTCLOUD_ADMIN_USER:-admin}
+      NEXTCLOUD_ADMIN_PASSWORD: ${NEXTCLOUD_ADMIN_PASSWORD:-change_me}
+      NEXTCLOUD_TRUSTED_DOMAINS: "${CLOUD_FQDN}"
+      OVERWRITECLIURL: "${PUBLIC_SCHEME}://${CLOUD_FQDN}"
+      OVERWRITEPROTOCOL: https
+      MYSQL_HOST: nextcloud-db
+      MYSQL_DATABASE: nextcloud
+      MYSQL_USER: nextcloud
+      MYSQL_PASSWORD: change_me
+      REDIS_HOST: redis
+    volumes:
+      - nextcloud-data:/var/www/html
+    depends_on:
+      - nextcloud-db
+      - redis
+
+  nextcloud-db:
+    image: mariadb:10.11
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: change_me
+      MYSQL_DATABASE: nextcloud
+      MYSQL_USER: nextcloud
+      MYSQL_PASSWORD: change_me
+    volumes:
+      - nextcloud-db-data:/var/lib/mysql
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+    volumes:
+      - ../config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../config/prometheus/rules:/etc/prometheus/rules:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    depends_on:
+      - cadvisor
+      - node-exporter
+      - stalwart
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/alertmanager/config.yml"
+    ports:
+      - "9093:9093"
+    volumes:
+      - ../config/alertmanager/config.yml:/etc/alertmanager/config.yml:ro
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    restart: unless-stopped
+    privileged: true
+    ports:
+      - "8081:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+
+  node-exporter:
+    image: prom/node-exporter:v1.7.0
+    restart: unless-stopped
+    pid: host
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|run|var/lib/docker/.+)"
+
+  restic-scheduler:
+    build:
+      context: ../services/restic-scheduler
+    restart: unless-stopped
+    environment:
+      <<: *shared-env
+      RESTIC_REPOSITORY: ${RESTIC_REPOSITORY:-/backups}
+      RESTIC_PASSWORD: ${RESTIC_PASSWORD:-changeme}
+    volumes:
+      - restic-data:/app/state
+
+  scim-bridge:
+    build:
+      context: ../services/scim-bridge
+    restart: unless-stopped
+    environment:
+      <<: *shared-env
+      SCIM_BRIDGE_PORT: 8089
+      KEYCLOAK_BASE_URL: http://keycloak:8080
+      KEYCLOAK_ADMIN_REALM: ${KEYCLOAK_REALM:-mailiacreate}
+      KEYCLOAK_CLIENT_ID: ${SCIM_CLIENT_ID:-mail-suite-scim}
+      KEYCLOAK_CLIENT_SECRET: ${SCIM_CLIENT_SECRET:-change_me}
+      STALWART_ADMIN_URL: http://stalwart:8080/admin
+      STALWART_ADMIN_USER: admin
+      STALWART_ADMIN_PASSWORD: change_me
+      SCIM_DEFAULT_QUOTA_MB: ${SCIM_DEFAULT_QUOTA_MB:-2048}
+    depends_on:
+      - keycloak
+      - stalwart
+    ports:
+      - "8089:8089"
+
+  synthetic-exporter:
+    build:
+      context: ..
+      dockerfile: services/synthetic-exporter/Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: *shared-env
+      SYNTHETIC_EXPORTER_PORT: 8090
+      SYNTHETIC_TARGET_HOST: ${SYNTHETIC_TARGET_HOST:-${MAIL_FQDN}}
+      SYNTHETIC_INTERVAL_SECONDS: ${SYNTHETIC_INTERVAL_SECONDS:-300}
+      SYNTHETIC_EXTRA_ARGS: ${SYNTHETIC_EXTRA_ARGS:-}
+    depends_on:
+      - caddy
+
+volumes:
+  caddy-data:
+  caddy-config:
+  stalwart-data:
+  synapse-data:
+  loki-data:
+  nextcloud-data:
+  nextcloud-db-data:
+  prometheus-data:
+  restic-data:
+  send-router-redis-data:
+  minio-data:
+

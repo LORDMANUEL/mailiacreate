@@ -1,0 +1,55 @@
+groups:
+  - name: mail-suite-alerts
+    rules:
+      - alert: HighSMTPQueue
+        expr: stalwart_smtp_queue_length > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "SMTP queue creciendo"
+          description: "La cola SMTP superó los 100 mensajes durante 5 minutos."
+
+      - alert: BackupFailure
+        expr: max_over_time(restic_scheduler_last_success{status="failure"}[30m]) > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: "Fallo en tarea de backup"
+          description: "Restic reportó al menos un fallo en la última ejecución programada."
+
+      - alert: MatrixUnreachable
+        expr: up{job="matrix-synapse"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Synapse no responde"
+          description: "El job matrix-synapse dejó de exponer métricas en los últimos 2 minutos."
+
+      - alert: SendRouterDeliveryFailures
+        expr: increase(send_router_jobs_failed_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Fallos en entregas del send-router"
+          description: "Se detectaron trabajos fallidos en los últimos 5 minutos. Revisa los logs del servicio send-router."
+
+      - alert: AIRiskSpike
+        expr: (ai_orchestrator_risk_score_sum / clamp_min(ai_orchestrator_risk_score_count, 1)) > 0.7
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Alto riesgo promedio en el pre-chequeo de IA"
+          description: "El puntaje promedio del servicio de IA supera 0.7 en los últimos 10 minutos."
+
+      - alert: SyntheticChecksFailing
+        expr: synthetic_overall_status < 1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Chequeos sintéticos reportan fallos"
+          description: "El exporter sintético detecta errores sostenidos en los servicios externos."

@@ -1,0 +1,40 @@
+server_name: chat.example.com
+public_baseurl: https://chat.example.com/
+listeners:
+  - port: 8008
+    type: http
+    tls: false
+    resources:
+      - names: [client, federation]
+        compress: false
+
+trusted_key_servers:
+  - server_name: matrix.org
+
+registration_shared_secret: "supersecret"
+
+media_store_path: /data/media_store
+
+log_config: /data/log.yaml
+
+app_service_config_files: []
+
+federation_domain_whitelist: []
+
+sso:
+  enabled: true
+  client_redirect_url_whitelist:
+    - https://element.example.com
+
+oidc_providers:
+  - idp_id: keycloak
+    idp_name: Keycloak
+    discover: true
+    issuer: https://sso.example.com/realms/mailiacreate
+    client_id: matrix-synapse
+    client_secret: change_me
+    scopes: ["openid", "profile", "email"]
+    user_mapping_provider:
+      config:
+        localpart_template: "{{ user.preferred_username }}"
+        display_name_template: "{{ user.name or user.preferred_username }}"

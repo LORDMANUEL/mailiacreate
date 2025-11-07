@@ -1,0 +1,4 @@
+/backups/
+compose/.env
+**/node_modules
+services/ai-orchestrator/data/
