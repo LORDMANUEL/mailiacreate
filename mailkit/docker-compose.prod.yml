@@ -1,0 +1,208 @@
+version: '3.8'
+
+networks:
+  mailkit_net:
+    external: true
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - mailkit_net
+
+  prometheus:
+    image: prom/prometheus:v2.40.1
+    restart: unless-stopped
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    networks:
+      - mailkit_net
+
+  stalwart:
+    image: stalwartlabs/mail-server:v0.11.8-alpine
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    ports:
+      - "25:25"   # SMTP
+      - "465:465" # SMTPS
+      - "587:587" # Submission
+      - "993:993" # IMAPS
+      - "9000:9000" # Metrics port
+    volumes:
+      - ./stalwart/config.toml:/etc/stalwart-mail/config.toml
+      - ./stalwart/config:/data/config
+      - stalwart_data:/data
+    networks:
+      - mailkit_net
+
+  webmail:
+    build: ./src/webmail
+    restart: unless-stopped
+    expose:
+      - 3000
+    networks:
+      - mailkit_net
+
+  admin-panel:
+    build: ./src/admin-panel
+    restart: unless-stopped
+    expose:
+      - 3000
+    networks:
+      - mailkit_net
+
+  it-panel:
+    build: ./src/it-panel
+    restart: unless-stopped
+    expose:
+      - 3000
+    networks:
+      - mailkit_net
+
+  send-router:
+    build: ./src/send-router
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    expose:
+      - 3000
+    networks:
+      - mailkit_net
+
+  db:
+    image: mariadb
+    restart: unless-stopped
+    command: --transaction-isolation=READ-COMMITTED --binlog-format=ROW
+    volumes:
+      - db_data:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextcloud
+    networks:
+      - mailkit_net
+
+  nextcloud:
+    image: nextcloud
+    restart: unless-stopped
+    ports:
+      - 8081:80
+    volumes:
+      - nextcloud_data:/var/www/html
+    environment:
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextcloud
+      - MYSQL_HOST=db
+    networks:
+      - mailkit_net
+
+  synapse:
+    image: matrixdotorg/synapse:latest
+    restart: unless-stopped
+    volumes:
+      - synapse_data:/data
+    networks:
+      - mailkit_net
+
+  element:
+    image: vectorim/element-web:latest
+    restart: unless-stopped
+    networks:
+      - mailkit_net
+
+  loki:
+    image: grafana/loki:2.4.1
+    restart: unless-stopped
+    volumes:
+      - loki_data:/loki
+    networks:
+      - mailkit_net
+
+  promtail:
+    image: grafana/promtail:2.4.1
+    restart: unless-stopped
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - ./promtail/config.yml:/etc/promtail/config.yml
+    networks:
+      - mailkit_net
+
+  grafana:
+    image: grafana/grafana:8.3.3
+    restart: unless-stopped
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - mailkit_net
+
+  restic-cron:
+    image: restic/restic
+    restart: unless-stopped
+    command: sh -c "echo '0 0 * * * restic backup /data' | crontab - && crond -f"
+    environment:
+      - RESTIC_REPOSITORY=/backups
+      - RESTIC_PASSWORD=${RESTIC_PASSWORD}
+    volumes:
+      - ./backups:/backups
+      - restic_cache:/root/.cache/restic
+      - stalwart_data:/data
+    networks:
+      - mailkit_net
+
+  keycloak_db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    volumes:
+      - keycloak_db_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=keycloak
+      - POSTGRES_USER=${KEYCLOAK_DB_USER}
+      - POSTGRES_PASSWORD=${KEYCLOAK_DB_PASSWORD}
+    networks:
+      - mailkit_net
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:22.0
+    restart: unless-stopped
+    command: start-dev
+    environment:
+      - KC_DB=postgres
+      - KC_DB_URL_HOST=keycloak_db
+      - KC_DB_USERNAME=${KEYCLOAK_DB_USER}
+      - KC_DB_PASSWORD=${KEYCLOAK_DB_PASSWORD}
+      - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN_USER}
+      - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}
+    depends_on:
+      - keycloak_db
+    networks:
+      - mailkit_net
+
+volumes:
+  prometheus_data:
+  keycloak_db_data:
+  caddy_data:
+  caddy_config:
+  stalwart_data:
+  db_data:
+  nextcloud_data:
+  synapse_data:
+  loki_data:
+  promtail_config:
+  grafana_data:
+  restic_cache:

@@ -1,0 +1,65 @@
+# Stalwart Mail Server configuration file.
+
+[server]
+hostname = "mail.${DOMAIN}"
+
+[data]
+directory = "/data"
+
+# --- OIDC Authentication with Keycloak ---
+# This section configures Stalwart to use Keycloak for user authentication.
+# It replaces the file-based user directory.
+
+[[principal]]
+type = "oidc"
+name = "keycloak"
+# The discovery URL for the Keycloak realm.
+discovery-url = "https://sso.${DOMAIN}/realms/mailkit"
+# The Client ID that Stalwart will use to communicate with Keycloak.
+# This needs to be created in the Keycloak admin console.
+client-id = "stalwart"
+# The client secret for the 'stalwart' client.
+client-secret = "${STALWART_CLIENT_SECRET}"
+# This tells Stalwart to validate the JWT access token from the 'Authorization: Bearer' header.
+token-validation = "introspect"
+
+# JMAP, IMAP, and SMTP Sessions
+[[session]]
+protocol = "jmap"
+port = 8080
+# Enable OAuth 2.0 authentication for JMAP
+auth-oauth2 = "keycloak"
+
+[[session]]
+protocol = "smtp"
+port = 25
+auth-oauth2 = "keycloak"
+
+[[session]]
+protocol = "imap"
+port = 143
+auth-oauth2 = "keycloak"
+
+# Other config remains the same...
+
+[[lookup]]
+name = "default"
+backend = "rocksdb"
+path = "/data/lookup"
+
+[[store]]
+name = "default"
+backend = "rocksdb"
+path = "/data/storage"
+
+[[blob]]
+name = "default"
+backend = "rocksdb"
+path = "/data/blob"
+
+# DKIM configuration
+[[dkim]]
+name = "default"
+selector = "default"
+domain = "${DOMAIN}"
+private-key-path = "/data/dkim/private.key"

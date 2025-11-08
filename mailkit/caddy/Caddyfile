@@ -1,0 +1,46 @@
+{
+    # Para un despliegue en producción, Caddy usará automáticamente el emisor de producción de Let's Encrypt.
+    # Asegúrate de que tu DNS esté apuntando correctamente al servidor.
+    # Para pruebas locales con localhost, Caddy generará certificados autofirmados.
+    email youremail@example.com
+}
+
+mail.{$DOMAIN} {
+    reverse_proxy stalwart:8080
+}
+
+webmail.{$DOMAIN} {
+    reverse_proxy webmail:3000
+}
+
+admin.{$DOMAIN} {
+    reverse_proxy admin-panel:3000
+}
+
+it.{$DOMAIN} {
+    reverse_proxy it-panel:3000
+}
+
+router.{$DOMAIN} {
+    reverse_proxy send-router:3000
+}
+
+sso.{$DOMAIN} {
+    reverse_proxy keycloak:8080
+}
+
+chat.{$DOMAIN} {
+    reverse_proxy synapse:8008
+}
+
+element.{$DOMAIN} {
+    reverse_proxy element:80
+}
+
+meet.{$DOMAIN} {
+    reverse_proxy jitsi:80
+}
+
+cloud.{$DOMAIN} {
+    reverse_proxy nextcloud:80
+}
