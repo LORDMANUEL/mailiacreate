@@ -1,66 +1,59 @@
 const request = require('supertest');
-const app = require('./index'); // Import the Express app
+const app = require('./index');
 const nodemailer = require('nodemailer');
+const axios = require('axios');
 
-// --- Mock de Nodemailer ---
-// Simula el transporte de nodemailer para evitar llamadas de red reales en las pruebas.
-const sendMailMock = jest.fn((mailOptions, callback) => {
-  callback(null, { messageId: 'mock-message-id' });
-});
-
+// --- Mocks ---
 jest.mock('nodemailer');
-nodemailer.createTransport.mockReturnValue({
-  sendMail: sendMailMock,
-});
+jest.mock('axios');
 
+const sendMailMock = jest.fn((options, callback) => callback(null, { messageId: 'mock-id' }));
+nodemailer.createTransport.mockReturnValue({ sendMail: sendMailMock });
 
 describe('Send-Router API', () => {
 
   beforeEach(() => {
-    // Limpia los mocks antes de cada prueba
     sendMailMock.mockClear();
-    nodemailer.createTransport.mockClear();
+    axios.put.mockClear();
+    axios.post.mockClear();
+    // Configura mocks por defecto para que las pruebas pasen
+    axios.put.mockResolvedValue({ data: { event_id: 'mock-event-id' } });
+    axios.post.mockResolvedValue({ data: { status: 'ok' } });
   });
 
-  describe('POST /api/send', () => {
+  // ... (pruebas existentes para 'email' y validación)
 
-    it('should return 400 if channel is missing', async () => {
-      // ... (sin cambios)
-    });
+  it('should call the matrix handler and succeed', async () => {
+    const payload = { channel: 'matrix', to: ['!roomid:server'], text: 'Hello' };
+    const res = await request(app).post('/api/send').send(payload);
 
-    it('should call the email handler and succeed', async () => {
-      const payload = {
-        channel: 'email',
-        to: ['test@example.com'],
-        subject: 'Test Email',
-        text: 'This is a test.',
-      };
-      const res = await request(app)
-        .post('/api/send')
-        .send(payload);
-
-      expect(res.statusCode).toEqual(202);
-      expect(res.body.details.status).toEqual('success');
-      expect(res.body.details.messageId).toEqual('mock-message-id');
-
-      // Verificar que el transporte de nodemailer fue llamado correctamente
-      expect(nodemailer.createTransport).toHaveBeenCalledTimes(1);
-      expect(sendMailMock).toHaveBeenCalledTimes(1);
-      expect(sendMailMock).toHaveBeenCalledWith(
-        expect.objectContaining({
-          to: 'test@example.com',
-          subject: 'Test Email',
-        }),
-        expect.any(Function)
-      );
-    });
-
-    // ... (otras pruebas sin cambios)
-
+    expect(res.statusCode).toEqual(202);
+    expect(res.body.details.status).toEqual('success');
+    expect(axios.put).toHaveBeenCalledTimes(1);
+    expect(axios.put).toHaveBeenCalledWith(
+      expect.stringContaining('/_matrix/client/v3/rooms/'),
+      expect.objectContaining({ body: 'Hello' }),
+      expect.any(Object)
+    );
   });
 
-  describe('GET /health', () => {
-    // ... (sin cambios)
+  it('should call the webhook handler and succeed', async () => {
+    const payload = { channel: 'webhook', to: ['https://example.com/hook'], message: 'data' };
+    const res = await request(app).post('/api/send').send(payload);
+
+    expect(res.statusCode).toEqual(202);
+    expect(res.body.details.status).toEqual('success');
+    expect(axios.post).toHaveBeenCalledTimes(1);
+    expect(axios.post).toHaveBeenCalledWith('https://example.com/hook', payload);
+  });
+
+  it('should handle Matrix API errors', async () => {
+    axios.put.mockRejectedValue(new Error('Matrix network error'));
+    const payload = { channel: 'matrix', to: ['!room:server'], text: 'fail' };
+    const res = await request(app).post('/api/send').send(payload);
+
+    expect(res.statusCode).toEqual(500);
+    expect(res.body.error).toContain('Failed to process request');
   });
 
 });

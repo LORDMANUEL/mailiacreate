@@ -1,0 +1,7 @@
+global:
+  scrape_interval: 15s # Recolecta métricas cada 15 segundos
+
+scrape_configs:
+  - job_name: 'stalwart'
+    static_configs:
+      - targets: ['stalwart:9000'] # Apunta al servicio de Stalwart en su puerto de métricas

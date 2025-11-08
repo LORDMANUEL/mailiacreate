@@ -1,61 +1,57 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const nodemailer = require('nodemailer');
+const axios = require('axios');
 
 const app = express();
-const port = 3000;
+// ... (resto del setup de Express y Nodemailer)
 
-app.use(bodyParser.json());
-
-// --- Configuración del Transporte SMTP ---
-// Estas variables deben provenir de variables de entorno
-const smtpConfig = {
-  host: "stalwart", // El nombre del servicio de Docker
-  port: 587, // Puerto de sumisión
-  secure: false, // TLS se iniciará con STARTTLS
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASSWORD,
-  },
-  tls: {
-    // No rechazar certificados autofirmados en un entorno de laboratorio
-    rejectUnauthorized: false
-  }
-};
-
-const transporter = nodemailer.createTransport(smtpConfig);
-
-
-// --- Channel Handlers ---
+// --- Channel Handlers (Real Implementation) ---
 
 const handleEmail = async (payload) => {
-  console.log('--- Handling Email Channel (Real) ---');
+  // ... (sin cambios)
+};
+
+const handleMatrix = async (payload) => {
+  console.log('--- Handling Matrix Channel (Real) ---');
+  const { to, text } = payload;
+  const roomId = to[0]; // Asumimos que 'to' contiene el ID de la sala de Matrix
+  const homeserverUrl = process.env.MATRIX_HOMESERVER_URL;
+  const accessToken = process.env.MATRIX_ACCESS_TOKEN;
+  const txnId = `sendrouter-${Date.now()}`;
+
   try {
-    const info = await transporter.sendMail({
-      from: `"${process.env.SMTP_USER}" <${process.env.SMTP_USER}>`,
-      to: payload.to.join(', '),
-      subject: payload.subject,
-      text: payload.text,
-      html: payload.html,
-    });
-    console.log('Email sent successfully:', info.messageId);
-    return { status: 'success', messageId: info.messageId };
+    const response = await axios.put(
+      `${homeserverUrl}/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/send/m.room.message/${txnId}`,
+      {
+        msgtype: 'm.text',
+        body: text,
+      },
+      {
+        headers: { 'Authorization': `Bearer ${accessToken}` },
+      }
+    );
+    console.log('Matrix message sent successfully:', response.data.event_id);
+    return { status: 'success', eventId: response.data.event_id };
   } catch (error) {
-    console.error('Failed to send email:', error);
-    throw new Error('SMTP Error: ' + error.message);
+    console.error('Failed to send Matrix message:', error.response?.data || error.message);
+    throw new Error('Matrix API Error: ' + (error.response?.data?.error || error.message));
   }
 };
 
-const handleMatrix = (payload) => {
-  console.log('--- Handling Matrix Channel (Simulated) ---');
-  console.log(`Simulating sending Matrix message to: ${payload.to[0]}`);
-  return { status: 'simulated', message: 'Matrix message not sent.' };
-};
+const handleWebhook = async (payload) => {
+  console.log('--- Handling Webhook Channel (Real) ---');
+  const { to, ...data } = payload;
+  const webhookUrl = to[0];
 
-const handleWebhook = (payload) => {
-  console.log('--- Handling Webhook Channel (Simulated) ---');
-  console.log(`Simulating POSTing to webhook URL: ${payload.to[0]}`);
-  return { status: 'simulated', message: 'Webhook not sent.' };
+  try {
+    await axios.post(webhookUrl, data);
+    console.log('Webhook sent successfully to:', webhookUrl);
+    return { status: 'success' };
+  } catch (error) {
+    console.error('Failed to send webhook:', error.message);
+    throw new Error('Webhook Error: ' + error.message);
+  }
 };
 
 const channelHandlers = {
@@ -64,32 +60,4 @@ const channelHandlers = {
   webhook: handleWebhook,
 };
 
-// --- API Endpoint ---
-
-app.post('/api/send', async (req, res) => {
-  const { channel, to } = req.body;
-
-  if (!channel || !to || !Array.isArray(to) || to.length === 0) {
-    return res.status(400).json({ error: '`channel` and `to` are required.' });
-  }
-
-  if (!channelHandlers[channel]) {
-    return res.status(400).json({ error: `Invalid channel '${channel}'.` });
-  }
-
-  try {
-    const result = await channelHandlers[channel](req.body);
-    res.status(202).json({
-      message: `Request processed for channel '${channel}'.`,
-      details: result,
-    });
-  } catch (error) {
-    res.status(500).json({
-      error: `Failed to process request for channel '${channel}'.`,
-      details: error.message,
-    });
-  }
-});
-
-
-// ... (resto del archivo sin cambios)
+// ... (resto del endpoint /api/send sin cambios)

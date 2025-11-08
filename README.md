@@ -145,13 +145,18 @@ Después de desplegar la suite por primera vez, necesitas configurar Keycloak pa
     *   **Authorization:** ON
     *   Guarda el cliente. En la pestaña "Credentials", copia el "Client secret" y añádelo a tu archivo `.env` como `STALWART_CLIENT_SECRET`.
 
-5.  **Crea Roles de Aplicación:**
+5.  **Crea un Cliente para la API de Administración (Service Account):**
+    *   Ve a "Clients" y crea un nuevo cliente con el **Client ID** `admin-cli-service`.
+    *   **Client authentication:** ON.
+    *   Guarda el cliente. En la pestaña "Service account roles", haz clic en "Assign role".
+    *   Filtra por "Clients" y asigna el rol `manage-users` del cliente `realm-management`.
+    *   Ve a la pestaña "Credentials", copia el "Client secret" y añádelo a tu archivo `.env` como `KEYCLOAK_ADMIN_CLIENT_SECRET`.
 
-4.  **Crea Roles de Aplicación:**
+6.  **Crea Roles de Aplicación:**
     *   Ve a "Clients", selecciona `admin-panel`.
     *   Ve a la pestaña "Roles" y crea roles como `admin` y `helpdesk`.
 
-5.  **Crea Usuarios:**
+7.  **Crea Usuarios:**
     *   Ve a "Users" y crea nuevos usuarios.
     *   En la pestaña "Credentials", establece una contraseña para cada usuario.
     *   En la pestaña "Role mapping", asigna los roles que creaste.
@@ -205,3 +210,10 @@ Para actualizar las imágenes de Docker a sus últimas versiones:
 1.  Detén los servicios: `sudo docker compose -f mailkit/docker-compose.prod.yml down`.
 2.  Obtén las últimas imágenes: `sudo docker compose -f mailkit/docker-compose.prod.yml pull`.
 3.  Vuelve a iniciar los servicios: `./deploy.sh`.
+
+## Consideraciones para Producción
+
+*   **Contraseñas Seguras:** Antes de desplegar, asegúrate de haber reemplazado TODAS las contraseñas `changeme` en tus archivos `.env` y `.env.jitsi` por valores largos, aleatorios y seguros.
+*   **Configuración de DNS:** Verifica que todos los registros A y MX de tu DNS están apuntando correctamente a la dirección IP de tu servidor. Caddy no podrá obtener certificados SSL si el DNS no está configurado.
+*   **Email del Administrador de Caddy:** Cambia el email `youremail@example.com` en el `Caddyfile` por tu email real. Let's Encrypt lo usará para notificaciones de expiración de certificados.
+*   **Backups:** Asegúrate de que el script `backup.sh` se ejecute regularmente (por ejemplo, a través de un cron job en el host) y de que los backups se almacenen en un lugar seguro, preferiblemente fuera del servidor.
